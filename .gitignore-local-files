@@ -1,0 +1,246 @@
+# LOCAL FILES - DO NOT COMMIT TO GITHUB
+
+This document explains which files should stay LOCAL ONLY and not be pushed to GitHub.
+
+---
+
+## Files to Keep LOCAL (Not in GitHub)
+
+### 1. Skill Files
+```
+hiremitra-skill/
+├── SKILL.md
+└── README.md
+```
+**Why local?** - Internal reference only. Not needed in production.
+
+### 2. Internal Guides
+```
+REBRANDING_GUIDE.md     ← Keep private
+TESTING_GUIDE.md        ← Internal testing
+UI_IMPROVEMENTS.md      ← Internal documentation
+```
+
+---
+
+## .gitignore Configuration
+
+✅ Both `backend/.gitignore` and `frontend/.gitignore` have been updated to EXCLUDE:
+
+```gitignore
+# Local Skills & Documentation (Keep Private)
+hiremitra-skill/
+REBRANDING_GUIDE.md
+TESTING_GUIDE.md
+UI_IMPROVEMENTS.md
+```
+
+---
+
+## What WILL be in GitHub
+
+The following directories/files WILL be committed:
+
+✅ `backend/`
+  - server.js
+  - models/
+  - controllers/
+  - routes/
+  - config/
+  - package.json
+  - .env (NO! Use .env.example)
+
+✅ `frontend/`
+  - app/
+  - components/
+  - lib/
+  - hooks/
+  - public/
+  - package.json
+  - .env.local (NO! Use .env.example)
+
+---
+
+## Using .env Files Safely
+
+Instead of committing `.env`, create example templates:
+
+### `backend/.env.example`
+```
+MONGODB_URI=mongodb://localhost:27017/hiremitra-platform
+PORT=5000
+JWT_SECRET=your_secret_here
+NODE_ENV=development
+FRONTEND_URL=http://localhost:3000
+```
+
+### `frontend/.env.local.example`
+```
+NEXT_PUBLIC_API_URL=http://localhost:5000/api
+```
+
+**Then in .gitignore:**
+```gitignore
+.env
+.env.local
+```
+
+---
+
+## Before Pushing to GitHub
+
+Run this checklist:
+
+```bash
+# Check what will be committed
+git status
+
+# Verify these folders are NOT in the commit:
+# ❌ hiremitra-skill/
+# ❌ REBRANDING_GUIDE.md
+# ❌ TESTING_GUIDE.md
+# ❌ UI_IMPROVEMENTS.md
+
+# Check .gitignore is working
+git check-ignore hiremitra-skill/
+# Should return: hiremitra-skill/
+```
+
+---
+
+## Git Commands
+
+### Check if file is ignored
+```bash
+git check-ignore -v hiremitra-skill/
+```
+
+### If accidentally added, remove from git:
+```bash
+git rm --cached hiremitra-skill/ -r
+git rm --cached REBRANDING_GUIDE.md
+git rm --cached TESTING_GUIDE.md
+git rm --cached UI_IMPROVEMENTS.md
+
+git commit -m "Remove local files from git tracking"
+```
+
+### Stage and commit only public files:
+```bash
+git add backend/ frontend/ README.md
+git commit -m "Add HireMitra platform code"
+git push origin main
+```
+
+---
+
+## Local Usage
+
+### Keep These Files Locally
+- `hiremitra-skill/` - For reference when building platforms
+- `REBRANDING_GUIDE.md` - For renaming your platform
+- `TESTING_GUIDE.md` - For manual testing
+- `UI_IMPROVEMENTS.md` - For UI documentation
+
+### Access When Needed
+```bash
+# On your machine (not in GitHub)
+cat REBRANDING_GUIDE.md
+cat TESTING_GUIDE.md
+```
+
+---
+
+## Summary
+
+✅ **DO push to GitHub:**
+- All application code (backend, frontend)
+- Configuration templates (.env.example)
+- README and documentation
+- git commits and history
+
+❌ **DO NOT push to GitHub:**
+- hiremitra-skill/ (internal reference)
+- REBRANDING_GUIDE.md (internal)
+- TESTING_GUIDE.md (internal)
+- .env (actual secrets)
+- .env.local (actual secrets)
+- node_modules/
+
+---
+
+## Verification
+
+Before your first GitHub push, verify:
+
+```bash
+cd hiremitra-platform
+
+# List all files that will be pushed
+git ls-files
+
+# Should NOT contain:
+# - hiremitra-skill/
+# - REBRANDING_GUIDE.md
+# - TESTING_GUIDE.md
+# - UI_IMPROVEMENTS.md
+```
+
+If you see any of those files, they weren't properly ignored. Run `git check-ignore -v <filename>` to debug.
+
+---
+
+## GitHub Repository Structure
+
+Your public GitHub repo will have:
+
+```
+hiremitra-platform/
+├── backend/
+│   ├── config/
+│   ├── controllers/
+│   ├── models/
+│   ├── routes/
+│   ├── middleware/
+│   ├── utils/
+│   ├── server.js
+│   ├── package.json
+│   ├── .env.example
+│   └── README.md
+│
+├── frontend/
+│   ├── app/
+│   ├── components/
+│   ├── lib/
+│   ├── hooks/
+│   ├── public/
+│   ├── package.json
+│   ├── tailwind.config.js
+│   ├── .env.example
+│   └── README.md
+│
+├── .gitignore
+└── README.md (root)
+```
+
+**NOT in GitHub:**
+- hiremitra-skill/
+- REBRANDING_GUIDE.md
+- TESTING_GUIDE.md
+- UI_IMPROVEMENTS.md
+- .env (actual files)
+- .env.local (actual files)
+- node_modules/
+
+---
+
+## Questions?
+
+If files are accidentally pushed:
+
+1. Remove from git history
+2. Update .gitignore
+3. Do a clean commit
+4. Push again
+
+Everything is automatically ignored by the updated `.gitignore` files now!

@@ -24,6 +24,12 @@ npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
 
+# Local Skills & Documentation (Keep Private)
+hiremitra-skill/
+REBRANDING_GUIDE.md
+TESTING_GUIDE.md
+UI_IMPROVEMENTS.md
+
 # local env files
 .env
 .env.local
