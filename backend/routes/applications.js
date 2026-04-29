@@ -1,55 +1,40 @@
 const express = require('express');
 const router = express.Router();
 const {
-  submitApplication,
+  applyForJob,
+  getMyApplications,
   getJobApplications,
-  getWorkerApplications,
-  acceptApplication,
+  getEmployerApplications,
+  getApplicationById,
+  updateApplicationStatus,
+  scheduleInterview,
+  sendOffer,
   rejectApplication,
-  withdrawApplication,
-  rateApplication,
-  getApplication
+  shortlistApplication,
+  cancelApplication
 } = require('../controllers/applicationController');
 const { verifyToken } = require('../middleware/auth');
 
-// @route   POST /api/applications
-// @desc    Submit job application
-// @access  Private
-router.post('/', verifyToken, submitApplication);
+// All routes require authentication
+router.use(verifyToken);
 
-// @route   GET /api/applications/:id
-// @desc    Get single application
-// @access  Private
-router.get('/:id', verifyToken, getApplication);
+// Worker routes
+router.post('/', applyForJob);
+router.get('/worker/me', getMyApplications);
+router.delete('/:id', cancelApplication);
 
-// @route   GET /api/applications/job/:jobId
-// @desc    Get applications for a job (employer)
-// @access  Private
-router.get('/job/:jobId', verifyToken, getJobApplications);
+// Employer routes
+router.get('/employer/me', getEmployerApplications);
+router.get('/employer/jobs/:jobId', getJobApplications);
 
-// @route   GET /api/applications/worker
-// @desc    Get applications submitted by worker
-// @access  Private
-router.get('/worker', verifyToken, getWorkerApplications);
+// Protected routes (both can view)
+router.get('/:id', getApplicationById);
 
-// @route   PATCH /api/applications/:id/accept
-// @desc    Accept application
-// @access  Private
-router.patch('/:id/accept', verifyToken, acceptApplication);
-
-// @route   PATCH /api/applications/:id/reject
-// @desc    Reject application
-// @access  Private
-router.patch('/:id/reject', verifyToken, rejectApplication);
-
-// @route   PATCH /api/applications/:id/withdraw
-// @desc    Withdraw application
-// @access  Private
-router.patch('/:id/withdraw', verifyToken, withdrawApplication);
-
-// @route   PATCH /api/applications/:id/rate
-// @desc    Rate application
-// @access  Private
-router.patch('/:id/rate', verifyToken, rateApplication);
+// Employer actions
+router.patch('/:id/status', updateApplicationStatus);
+router.patch('/:id/shortlist', shortlistApplication);
+router.patch('/:id/interview', scheduleInterview);
+router.patch('/:id/offer', sendOffer);
+router.patch('/:id/reject', rejectApplication);
 
 module.exports = router;

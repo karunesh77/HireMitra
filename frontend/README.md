@@ -1,158 +1,36 @@
-# HireMitra Frontend
+This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
 
-Frontend for the HireMitra Job Platform built with Next.js and Tailwind CSS.
+## Getting Started
 
-## Setup Instructions
+First, run the development server:
 
-### 1. Install Dependencies
-```bash
-cd frontend
-npm install
-```
-
-### 2. Configure Environment
-Create or update `.env.local`:
-```
-NEXT_PUBLIC_API_URL=http://localhost:5000/api
-```
-
-### 3. Run Development Server
 ```bash
 npm run dev
+# or
+yarn dev
+# or
+pnpm dev
+# or
+bun dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) in your browser.
+Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
 
----
+You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
 
-## Project Structure
+This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
 
-```
-frontend/
-├── app/                    # Next.js App Router pages
-│   ├── auth/              # Login & Register
-│   ├── jobs/              # Job listing & details
-│   ├── applications/      # Applications management
-│   ├── profile/           # User profile
-│   └── layout.js          # Root layout
-├── components/            # Reusable React components
-├── lib/                   # Utilities (API, Auth, Storage)
-├── hooks/                 # Custom React hooks
-└── public/               # Static files
-```
+## Learn More
 
----
+To learn more about Next.js, take a look at the following resources:
 
-## Key Files
+- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
+- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
 
-### Pages
-- `app/page.js` - Home page
-- `app/auth/login/page.js` - Login page
-- `app/auth/register/page.js` - Register page
-- `app/jobs/page.js` - Jobs listing
-- `app/jobs/[id]/page.js` - Job details
-- `app/applications/page.js` - My applications
-- `app/profile/page.js` - User profile
+You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
 
-### Components
-- `Navbar.js` - Navigation bar
-- `Footer.js` - Footer
-- `JobCard.js` - Job card component
-- `AuthForm.js` - Login/Register form
-- `LoadingSpinner.js` - Loading indicator
+## Deploy on Vercel
 
-### Utilities
-- `lib/api.js` - Axios API client with auth
-- `lib/auth.js` - Authentication helpers
-- `lib/storage.js` - LocalStorage utilities
-- `hooks/useAuth.js` - Auth state hook
-- `hooks/useApi.js` - API call hook
+The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
 
----
-
-## Features Implemented
-
-✅ **Authentication**
-- Register (worker/employer)
-- Login with JWT
-- Token management in localStorage
-- Protected routes
-
-✅ **Job Management**
-- List all jobs with filters
-- View job details
-- Apply to jobs
-- See application status
-
-✅ **User Profiles**
-- View/Edit profile
-- Worker skills
-- Employer company info
-- Rating display
-
-✅ **Navigation**
-- Responsive navbar
-- Mobile menu
-- Auth-aware navigation
-
----
-
-## Environment Variables
-
-| Variable | Description | Default |
-|----------|-------------|---------|
-| `NEXT_PUBLIC_API_URL` | Backend API URL | `http://localhost:5000/api` |
-
----
-
-## Scripts
-
-```bash
-# Development
-npm run dev
-
-# Build for production
-npm run build
-
-# Start production server
-npm run start
-
-# Run linter
-npm run lint
-```
-
----
-
-## Technologies
-
-- **Next.js 14** - React framework
-- **Tailwind CSS** - Styling
-- **Axios** - HTTP client
-- **React Hooks** - State management
-
----
-
-## Common Issues
-
-### API Connection Failed
-- Ensure backend is running on `http://localhost:5000`
-- Check `.env.local` has correct `NEXT_PUBLIC_API_URL`
-- Check browser console for errors
-
-### Token Expired
-- User is automatically redirected to login
-- Clear localStorage and login again
-
-### Styles Not Loading
-- Run `npm install tailwindcss postcss autoprefixer`
-- Restart dev server
-
----
-
-## Next Steps
-
-1. Customize colors in `tailwind.config.js`
-2. Add more pages/features as needed
-3. Improve error handling
-4. Add form validation
-5. Optimize images
+Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.

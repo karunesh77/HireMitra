@@ -1,41 +1,46 @@
 const Job = require('../models/Job');
-const Application = require('../models/Application');
-const { calculateDistance } = require('../utils/helpers');
+const User = require('../models/User');
 
-// @desc    Create a new job posting
+// @desc    Post a new job
 // @route   POST /api/jobs
-// @access  Private (employers only)
-exports.createJob = async (req, res) => {
+// @access  Private (Employer only)
+exports.postJob = async (req, res) => {
   try {
-    const { title, description, requiredSkills, paymentType, salary, location, startDate, positions, duration, yearsOfExperience, isUrgent } = req.body;
+    const { title, description, category, skillsRequired, location, salaryMin, salaryMax, jobType, experience, numberOfOpenings, workTiming, accommodation, travelRequired, specialRequirements, benefits, closingDate } = req.body;
 
-    // Validate required fields
-    if (!title || !description || !requiredSkills || !paymentType || !salary || !location || !startDate) {
-      return res.status(400).json({ error: 'Missing required fields' });
+    // Validation
+    if (!title || !description || !category || !location || !salaryMin || !salaryMax) {
+      return res.status(400).json({ error: 'Please provide all required fields' });
     }
 
-    // Validate location has coordinates
-    if (!location.latitude || !location.longitude) {
-      return res.status(400).json({ error: 'Location must include latitude and longitude' });
+    // Get employer details
+    const employer = await User.findById(req.user.id);
+
+    if (!employer || employer.userType !== 'employer') {
+      return res.status(403).json({ error: 'Only employers can post jobs' });
     }
 
-    const job = new Job({
+    const job = await Job.create({
+      employerId: req.user.id,
       title,
       description,
-      requiredSkills,
-      paymentType,
-      salary,
+      category,
+      skillsRequired: skillsRequired || [],
       location,
-      startDate,
-      positions: positions || 1,
-      duration: duration || 'one-time',
-      yearsOfExperience: yearsOfExperience || 0,
-      isUrgent: isUrgent || false,
-      postedBy: req.user.id
+      salaryMin,
+      salaryMax,
+      jobType,
+      experience,
+      numberOfOpenings,
+      workTiming,
+      accommodation,
+      travelRequired,
+      specialRequirements,
+      benefits: benefits || [],
+      closingDate,
+      companyName: employer.companyName,
+      companyLogo: employer.companyLogo
     });
-
-    await job.save();
-    await job.populate('postedBy', 'name companyName');
 
     res.status(201).json({
       success: true,
@@ -43,17 +48,66 @@ exports.createJob = async (req, res) => {
       job
     });
   } catch (error) {
-    console.error('CreateJob error:', error);
+    console.error('PostJob error:', error);
     res.status(500).json({ error: error.message || 'Server error' });
   }
 };
 
-// @desc    Get single job
+// @desc    Get all jobs with filters
+// @route   GET /api/jobs
+// @access  Public
+exports.getJobs = async (req, res) => {
+  try {
+    const { category, location, salaryMin, salaryMax, jobType, search, page = 1, limit = 10 } = req.query;
+
+    let filter = { status: 'active' };
+
+    if (category) filter.category = category;
+    if (location) filter.location = new RegExp(location, 'i');
+    if (salaryMin) filter.salaryMin = { $gte: salaryMin };
+    if (salaryMax) filter.salaryMax = { $lte: salaryMax };
+    if (jobType) filter.jobType = jobType;
+    if (search) {
+      filter.$or = [
+        { title: new RegExp(search, 'i') },
+        { description: new RegExp(search, 'i') }
+      ];
+    }
+
+    const skip = (page - 1) * limit;
+
+    const jobs = await Job.find(filter)
+      .populate('employerId', 'name companyName rating')
+      .sort({ postedDate: -1 })
+      .skip(skip)
+      .limit(parseInt(limit));
+
+    const total = await Job.countDocuments(filter);
+
+    res.status(200).json({
+      success: true,
+      count: jobs.length,
+      total,
+      page: parseInt(page),
+      pages: Math.ceil(total / limit),
+      jobs
+    });
+  } catch (error) {
+    console.error('GetJobs error:', error);
+    res.status(500).json({ error: error.message || 'Server error' });
+  }
+};
+
+// @desc    Get single job details
 // @route   GET /api/jobs/:id
 // @access  Public
-exports.getJob = async (req, res) => {
+exports.getJobById = async (req, res) => {
   try {
-    const job = await Job.findById(req.params.id).populate('postedBy', 'name companyName email phone');
+    const job = await Job.findByIdAndUpdate(
+      req.params.id,
+      { $inc: { views: 1 } },
+      { new: true }
+    ).populate('employerId', 'name companyName email phone rating');
 
     if (!job) {
       return res.status(404).json({ error: 'Job not found' });
@@ -64,141 +118,49 @@ exports.getJob = async (req, res) => {
       job
     });
   } catch (error) {
-    console.error('GetJob error:', error);
-    res.status(500).json({ error: 'Server error' });
-  }
-};
-
-// @desc    List all jobs with filters
-// @route   GET /api/jobs
-// @access  Public
-exports.listJobs = async (req, res) => {
-  try {
-    const { skills, city, state, minSalary, maxSalary, page = 1, limit = 20, sortBy = 'createdAt' } = req.query;
-
-    const filter = { status: 'open' };
-
-    // Filter by skills
-    if (skills) {
-      filter.requiredSkills = { $in: Array.isArray(skills) ? skills : [skills] };
-    }
-
-    // Filter by location
-    if (city) {
-      filter['location.city'] = { $regex: city, $options: 'i' };
-    }
-
-    if (state) {
-      filter['location.state'] = { $regex: state, $options: 'i' };
-    }
-
-    // Filter by salary range
-    if (minSalary || maxSalary) {
-      filter.salary = {};
-      if (minSalary) filter.salary.$gte = parseInt(minSalary);
-      if (maxSalary) filter.salary.$lte = parseInt(maxSalary);
-    }
-
-    const skip = (page - 1) * limit;
-
-    const jobs = await Job.find(filter)
-      .populate('postedBy', 'name companyName rating')
-      .limit(parseInt(limit))
-      .skip(skip)
-      .sort({ [sortBy]: -1 });
-
-    const total = await Job.countDocuments(filter);
-
-    res.status(200).json({
-      success: true,
-      pagination: {
-        total,
-        page: parseInt(page),
-        limit: parseInt(limit),
-        pages: Math.ceil(total / limit)
-      },
-      jobs
-    });
-  } catch (error) {
-    console.error('ListJobs error:', error);
-    res.status(500).json({ error: 'Server error' });
-  }
-};
-
-// @desc    Find nearby jobs (within radius)
-// @route   GET /api/jobs/nearby
-// @access  Public
-exports.findNearbyJobs = async (req, res) => {
-  try {
-    const { latitude, longitude, radiusKm = 25, skills, page = 1, limit = 20 } = req.query;
-
-    if (!latitude || !longitude) {
-      return res.status(400).json({ error: 'Latitude and longitude are required' });
-    }
-
-    const radius = parseFloat(radiusKm);
-    const userLat = parseFloat(latitude);
-    const userLon = parseFloat(longitude);
-
-    // Get all open jobs
-    let filter = { status: 'open' };
-    if (skills) {
-      filter.requiredSkills = { $in: Array.isArray(skills) ? skills : [skills] };
-    }
-
-    const allJobs = await Job.find(filter).populate('postedBy', 'name companyName rating');
-
-    // Filter by distance
-    const nearbyJobs = allJobs.filter(job => {
-      const distance = calculateDistance(userLat, userLon, job.location.latitude, job.location.longitude);
-      return distance <= radius;
-    });
-
-    // Pagination
-    const skip = (page - 1) * limit;
-    const paginatedJobs = nearbyJobs.slice(skip, skip + parseInt(limit));
-
-    res.status(200).json({
-      success: true,
-      pagination: {
-        total: nearbyJobs.length,
-        page: parseInt(page),
-        limit: parseInt(limit),
-        pages: Math.ceil(nearbyJobs.length / limit)
-      },
-      jobs: paginatedJobs.map(job => ({
-        ...job.toObject(),
-        distance: calculateDistance(userLat, userLon, job.location.latitude, job.location.longitude).toFixed(2) + ' km'
-      }))
-    });
-  } catch (error) {
-    console.error('FindNearbyJobs error:', error);
-    res.status(500).json({ error: 'Server error' });
+    console.error('GetJobById error:', error);
+    res.status(500).json({ error: error.message || 'Server error' });
   }
 };
 
 // @desc    Update job
 // @route   PUT /api/jobs/:id
-// @access  Private (only employer who posted it)
+// @access  Private (Job owner only)
 exports.updateJob = async (req, res) => {
   try {
-    const job = await Job.findById(req.params.id);
+    let job = await Job.findById(req.params.id);
 
     if (!job) {
       return res.status(404).json({ error: 'Job not found' });
     }
 
     // Check authorization
-    if (job.postedBy.toString() !== req.user.id) {
+    if (job.employerId.toString() !== req.user.id) {
       return res.status(403).json({ error: 'Not authorized to update this job' });
     }
 
-    // Update allowed fields
-    const allowedFields = ['title', 'description', 'requiredSkills', 'salary', 'startDate', 'status', 'positions'];
-    allowedFields.forEach(field => {
-      if (req.body[field]) job[field] = req.body[field];
-    });
+    // Update fields
+    const { title, description, category, skillsRequired, location, salaryMin, salaryMax, jobType, experience, numberOfOpenings, workTiming, accommodation, travelRequired, specialRequirements, benefits, closingDate, status } = req.body;
 
+    if (title) job.title = title;
+    if (description) job.description = description;
+    if (category) job.category = category;
+    if (skillsRequired) job.skillsRequired = skillsRequired;
+    if (location) job.location = location;
+    if (salaryMin) job.salaryMin = salaryMin;
+    if (salaryMax) job.salaryMax = salaryMax;
+    if (jobType) job.jobType = jobType;
+    if (experience !== undefined) job.experience = experience;
+    if (numberOfOpenings) job.numberOfOpenings = numberOfOpenings;
+    if (workTiming) job.workTiming = workTiming;
+    if (accommodation !== undefined) job.accommodation = accommodation;
+    if (travelRequired) job.travelRequired = travelRequired;
+    if (specialRequirements) job.specialRequirements = specialRequirements;
+    if (benefits) job.benefits = benefits;
+    if (closingDate) job.closingDate = closingDate;
+    if (status) job.status = status;
+
+    job.updatedAt = Date.now();
     await job.save();
 
     res.status(200).json({
@@ -214,7 +176,7 @@ exports.updateJob = async (req, res) => {
 
 // @desc    Delete job
 // @route   DELETE /api/jobs/:id
-// @access  Private (only employer who posted it)
+// @access  Private (Job owner only)
 exports.deleteJob = async (req, res) => {
   try {
     const job = await Job.findById(req.params.id);
@@ -224,7 +186,7 @@ exports.deleteJob = async (req, res) => {
     }
 
     // Check authorization
-    if (job.postedBy.toString() !== req.user.id) {
+    if (job.employerId.toString() !== req.user.id) {
       return res.status(403).json({ error: 'Not authorized to delete this job' });
     }
 
@@ -236,23 +198,80 @@ exports.deleteJob = async (req, res) => {
     });
   } catch (error) {
     console.error('DeleteJob error:', error);
-    res.status(500).json({ error: 'Server error' });
+    res.status(500).json({ error: error.message || 'Server error' });
   }
 };
 
-// @desc    Get jobs posted by employer
-// @route   GET /api/jobs/employer/:employerId
-// @access  Public
-exports.getEmployerJobs = async (req, res) => {
+// @desc    Get employer's jobs
+// @route   GET /api/jobs/employer/me
+// @access  Private (Employer only)
+exports.getMyJobs = async (req, res) => {
   try {
-    const jobs = await Job.find({ postedBy: req.params.employerId }).populate('postedBy', 'name companyName');
+    const jobs = await Job.find({ employerId: req.user.id }).sort({ postedDate: -1 });
 
     res.status(200).json({
       success: true,
+      count: jobs.length,
       jobs
     });
   } catch (error) {
-    console.error('GetEmployerJobs error:', error);
-    res.status(500).json({ error: 'Server error' });
+    console.error('GetMyJobs error:', error);
+    res.status(500).json({ error: error.message || 'Server error' });
+  }
+};
+
+// @desc    Search jobs
+// @route   GET /api/jobs/search
+// @access  Public
+exports.searchJobs = async (req, res) => {
+  try {
+    const { query } = req.query;
+
+    if (!query) {
+      return res.status(400).json({ error: 'Please provide search query' });
+    }
+
+    const jobs = await Job.find({
+      $text: { $search: query },
+      status: 'active'
+    }).populate('employerId', 'name companyName rating');
+
+    res.status(200).json({
+      success: true,
+      count: jobs.length,
+      jobs
+    });
+  } catch (error) {
+    console.error('SearchJobs error:', error);
+    res.status(500).json({ error: error.message || 'Server error' });
+  }
+};
+
+// @desc    Close job (stop accepting applications)
+// @route   PATCH /api/jobs/:id/close
+// @access  Private (Job owner only)
+exports.closeJob = async (req, res) => {
+  try {
+    const job = await Job.findById(req.params.id);
+
+    if (!job) {
+      return res.status(404).json({ error: 'Job not found' });
+    }
+
+    if (job.employerId.toString() !== req.user.id) {
+      return res.status(403).json({ error: 'Not authorized' });
+    }
+
+    job.status = 'closed';
+    await job.save();
+
+    res.status(200).json({
+      success: true,
+      message: 'Job closed successfully',
+      job
+    });
+  } catch (error) {
+    console.error('CloseJob error:', error);
+    res.status(500).json({ error: error.message || 'Server error' });
   }
 };

@@ -1,134 +1,95 @@
 const User = require('../models/User');
 const jwt = require('jsonwebtoken');
-const { isValidEmail, isStrongPassword, validateRequired } = require('../utils/validators');
 
-// Generate JWT Token
-const generateToken = (id) => {
-  return jwt.sign({ id }, process.env.JWT_SECRET, {
-    expiresIn: '30d'
+const generateToken = (id, userType) => {
+  return jwt.sign({ id, userType }, process.env.JWT_SECRET, {
+    expiresIn: process.env.JWT_EXPIRE || '7d'
   });
 };
 
-// @desc    Register a new user (worker or employer)
-// @route   POST /api/auth/register
-// @access  Public
 exports.register = async (req, res) => {
   try {
-    const { name, email, phone, password, userType, companyName, skills } = req.body;
+    const { email, password, name, phone, userType } = req.body;
 
-    // Validate required fields
-    const requiredFields = ['name', 'email', 'phone', 'password', 'userType'];
-    const validation = validateRequired(requiredFields, req.body);
-    if (!validation.isValid) {
-      return res.status(400).json({ error: validation.message });
+    // Validation
+    if (!email || !password || !name || !phone) {
+      return res.status(400).json({ error: 'Please provide all required fields' });
     }
 
-    // Validate email format
-    if (!isValidEmail(email)) {
-      return res.status(400).json({ error: 'Invalid email format' });
-    }
-
-    // Validate password strength
-    if (!isStrongPassword(password)) {
-      return res.status(400).json({ error: 'Password must be at least 6 characters' });
-    }
-
-    // Check if user already exists
-    const existingUser = await User.findOne({ $or: [{ email }, { phone }] });
+    // Check if user exists
+    const existingUser = await User.findOne({ email });
     if (existingUser) {
-      return res.status(400).json({ error: 'Email or phone already registered' });
-    }
-
-    // Validate userType
-    if (!['worker', 'employer'].includes(userType)) {
-      return res.status(400).json({ error: 'userType must be "worker" or "employer"' });
+      return res.status(400).json({ error: 'Email already registered' });
     }
 
     // Create user
-    const user = new User({
-      name,
+    const user = await User.create({
       email,
-      phone,
       password,
-      userType,
-      ...(userType === 'employer' && { companyName }),
-      ...(userType === 'worker' && { skills: skills || [] })
+      name,
+      phone,
+      userType: userType || 'worker'
     });
 
-    await user.save();
-
     // Generate token
-    const token = generateToken(user._id);
+    const token = generateToken(user._id, user.userType);
+
+    // Remove password from response
+    user.password = undefined;
 
     res.status(201).json({
       success: true,
       message: 'User registered successfully',
       token,
-      user: {
-        id: user._id,
-        name: user.name,
-        email: user.email,
-        userType: user.userType
-      }
+      user
     });
   } catch (error) {
     console.error('Register error:', error);
-    res.status(500).json({ error: 'Server error during registration' });
+    res.status(500).json({ error: error.message || 'Server error' });
   }
 };
 
-// @desc    Login user
-// @route   POST /api/auth/login
-// @access  Public
 exports.login = async (req, res) => {
   try {
     const { email, password } = req.body;
 
-    // Validate input
+    // Validation
     if (!email || !password) {
-      return res.status(400).json({ error: 'Email and password are required' });
+      return res.status(400).json({ error: 'Please provide email and password' });
     }
 
-    // Find user and include password field
+    // Find user (include password field)
     const user = await User.findOne({ email }).select('+password');
+
     if (!user) {
-      return res.status(401).json({ error: 'Invalid credentials' });
+      return res.status(401).json({ error: 'Invalid email or password' });
     }
 
     // Check password
-    const isPasswordCorrect = await user.matchPassword(password);
-    if (!isPasswordCorrect) {
-      return res.status(401).json({ error: 'Invalid credentials' });
+    const isPasswordValid = await user.matchPassword(password);
+
+    if (!isPasswordValid) {
+      return res.status(401).json({ error: 'Invalid email or password' });
     }
 
-    // Update last login
-    user.lastLogin = new Date();
-    await user.save();
-
     // Generate token
-    const token = generateToken(user._id);
+    const token = generateToken(user._id, user.userType);
+
+    // Remove password from response
+    user.password = undefined;
 
     res.status(200).json({
       success: true,
       message: 'Login successful',
       token,
-      user: {
-        id: user._id,
-        name: user.name,
-        email: user.email,
-        userType: user.userType,
-        phone: user.phone
-      }
+      user
     });
   } catch (error) {
     console.error('Login error:', error);
-    res.status(500).json({ error: 'Server error during login' });
+    res.status(500).json({ error: error.message || 'Server error' });
   }
 };
 
-// @desc    Get current logged-in user
-// @route   GET /api/auth/me
-// @access  Private (requires token)
 exports.getMe = async (req, res) => {
   try {
     const user = await User.findById(req.user.id);
@@ -143,6 +104,6 @@ exports.getMe = async (req, res) => {
     });
   } catch (error) {
     console.error('GetMe error:', error);
-    res.status(500).json({ error: 'Server error' });
+    res.status(500).json({ error: error.message || 'Server error' });
   }
 };

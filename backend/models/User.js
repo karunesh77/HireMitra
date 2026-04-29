@@ -1,124 +1,103 @@
 const mongoose = require('mongoose');
 const bcrypt = require('bcryptjs');
-const { USER_TYPES, SKILLS } = require('../config/constants');
 
-const userSchema = new mongoose.Schema(
-  {
-    // Basic Information
-    name: {
-      type: String,
-      required: [true, 'Name is required'],
-      trim: true,
-      minlength: [2, 'Name must be at least 2 characters']
-    },
-
-    email: {
-      type: String,
-      required: [true, 'Email is required'],
-      unique: true,
-      lowercase: true,
-      match: [/^\w+([.-]?\w+)*@\w+([.-]?\w+)*(\.\w{2,3})+$/, 'Please provide a valid email']
-    },
-
-    phone: {
-      type: String,
-      required: [true, 'Phone is required'],
-      unique: true,
-      match: [/^\d{10}$/, 'Phone must be 10 digits']
-    },
-
-    password: {
-      type: String,
-      required: [true, 'Password is required'],
-      minlength: [6, 'Password must be at least 6 characters'],
-      select: false // Don't return password by default
-    },
-
-    // User Type
-    userType: {
-      type: String,
-      enum: [USER_TYPES.WORKER, USER_TYPES.EMPLOYER],
-      required: true
-    },
-
-    // Worker-specific fields
-    skills: {
-      type: [String],
-      enum: SKILLS,
-      default: []
-    },
-
-    location: {
-      address: String,
-      city: String,
-      state: String,
-      zipCode: String,
-      latitude: Number,
-      longitude: Number
-    },
-
-    hourlyRate: {
-      type: Number,
-      min: [0, 'Hourly rate cannot be negative']
-    },
-
-    availability: {
-      type: String,
-      enum: ['full-time', 'part-time', 'flexible'],
-      default: 'flexible'
-    },
-
-    bio: {
-      type: String,
-      maxlength: [500, 'Bio cannot exceed 500 characters']
-    },
-
-    // Employer-specific fields
-    companyName: String,
-    companyDescription: {
-      type: String,
-      maxlength: [1000, 'Company description cannot exceed 1000 characters']
-    },
-    website: String,
-    companyPhone: String,
-
-    // Profile
-    profileImage: {
-      type: String,
-      default: null
-    },
-
-    // Rating system
-    rating: {
-      average: {
-        type: Number,
-        default: 0,
-        min: 0,
-        max: 5
-      },
-      count: {
-        type: Number,
-        default: 0
-      }
-    },
-
-    // Account Status
-    isActive: {
-      type: Boolean,
-      default: true
-    },
-
-    lastLogin: Date
+const userSchema = new mongoose.Schema({
+  email: {
+    type: String,
+    required: [true, 'Please provide an email'],
+    unique: true,
+    lowercase: true,
+    match: [/^\w+([\.-]?\w+)*@\w+([\.-]?\w+)*(\.\w{2,3})+$/, 'Please provide valid email']
   },
-  {
-    timestamps: true // Adds createdAt and updatedAt automatically
+  password: {
+    type: String,
+    required: [true, 'Please provide password'],
+    minlength: 6,
+    select: false
+  },
+  userType: {
+    type: String,
+    enum: ['worker', 'employer', 'admin'],
+    required: [true, 'Please specify user type'],
+    default: 'worker'
+  },
+  name: {
+    type: String,
+    required: [true, 'Please provide name']
+  },
+  phone: {
+    type: String,
+    required: [true, 'Please provide phone number']
+  },
+  profileImage: {
+    type: String,
+    default: null
+  },
+  location: String,
+  address: String,
+
+  // Worker specific fields
+  skills: [String],
+  experience: Number,
+  hourlyRate: Number,
+  bio: String,
+  availability: {
+    type: String,
+    enum: ['full-time', 'part-time', 'contract']
+  },
+  certifications: [String],
+  verificationStatus: {
+    type: String,
+    enum: ['pending', 'verified', 'rejected'],
+    default: 'pending'
+  },
+  identityProof: String,
+  addressProof: String,
+
+  // Employer specific fields
+  companyName: String,
+  companyLogo: String,
+  companyDescription: String,
+  website: String,
+  industry: String,
+  companySize: String,
+  gstCertificate: String,
+  businessRegistration: String,
+
+  // Common fields
+  rating: {
+    type: Number,
+    default: 0,
+    min: 0,
+    max: 5
+  },
+  totalReviews: {
+    type: Number,
+    default: 0
+  },
+  isActive: {
+    type: Boolean,
+    default: true
+  },
+  isBlocked: {
+    type: Boolean,
+    default: false
+  },
+  createdAt: {
+    type: Date,
+    default: Date.now
+  },
+  updatedAt: {
+    type: Date,
+    default: Date.now
   }
-);
+});
 
 // Hash password before saving
-userSchema.pre('save', async function (next) {
-  // Only hash if password is modified
-  if (!this.isModified('password')) return next();
+userSchema.pre('save', async function(next) {
+  if (!this.isModified('password')) {
+    return next();
+  }
 
   try {
     const salt = await bcrypt.genSalt(10);
@@ -129,16 +108,9 @@ userSchema.pre('save', async function (next) {
   }
 });
 
-// Method to compare password
-userSchema.methods.matchPassword = async function (enteredPassword) {
+// Match password method
+userSchema.methods.matchPassword = async function(enteredPassword) {
   return await bcrypt.compare(enteredPassword, this.password);
-};
-
-// Don't expose sensitive fields in JSON
-userSchema.methods.toJSON = function () {
-  const obj = this.toObject();
-  delete obj.password;
-  return obj;
 };
 
 module.exports = mongoose.model('User', userSchema);

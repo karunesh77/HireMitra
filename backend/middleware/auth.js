@@ -1,6 +1,5 @@
 const jwt = require('jsonwebtoken');
 
-// Placeholder for now - we'll implement this in Step 3
 const verifyToken = (req, res, next) => {
   try {
     const token = req.headers.authorization?.split(' ')[1];
@@ -13,8 +12,22 @@ const verifyToken = (req, res, next) => {
     req.user = decoded;
     next();
   } catch (error) {
-    res.status(401).json({ error: 'Invalid token' });
+    return res.status(401).json({ error: 'Invalid or expired token' });
   }
 };
 
-module.exports = { verifyToken };
+const verifyRole = (allowedRoles) => {
+  return (req, res, next) => {
+    if (!req.user) {
+      return res.status(401).json({ error: 'No token provided' });
+    }
+
+    if (!allowedRoles.includes(req.user.userType)) {
+      return res.status(403).json({ error: 'Insufficient permissions' });
+    }
+
+    next();
+  };
+};
+
+module.exports = { verifyToken, verifyRole };

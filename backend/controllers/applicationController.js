@@ -2,50 +2,53 @@ const Application = require('../models/Application');
 const Job = require('../models/Job');
 const User = require('../models/User');
 
-// @desc    Submit job application
+// @desc    Apply for a job (Worker)
 // @route   POST /api/applications
-// @access  Private (workers only)
-exports.submitApplication = async (req, res) => {
+// @access  Private (Worker only)
+exports.applyForJob = async (req, res) => {
   try {
-    const { jobId, message, quotedRate } = req.body;
+    const { jobId, coverLetter, expectedSalary, availabilityDate, preferredShift } = req.body;
 
-    // Validate job exists
+    // Validation
+    if (!jobId) {
+      return res.status(400).json({ error: 'Job ID is required' });
+    }
+
+    // Get job details
     const job = await Job.findById(jobId);
     if (!job) {
       return res.status(404).json({ error: 'Job not found' });
     }
 
-    // Check if job is still open
-    if (job.status !== 'open') {
-      return res.status(400).json({ error: 'This job is no longer open' });
+    // Get worker and employer
+    const worker = await User.findById(req.user.id);
+    if (!worker || worker.userType !== 'worker') {
+      return res.status(403).json({ error: 'Only workers can apply for jobs' });
     }
 
-    // Check if worker already applied
+    // Check if already applied
     const existingApplication = await Application.findOne({
-      job: jobId,
-      applicant: req.user.id,
-      status: { $ne: 'withdrawn' }
+      workerId: req.user.id,
+      jobId
     });
 
     if (existingApplication) {
-      return res.status(400).json({ error: 'You have already applied to this job' });
+      return res.status(400).json({ error: 'You have already applied for this job' });
     }
 
     // Create application
-    const application = new Application({
-      job: jobId,
-      applicant: req.user.id,
-      message: message || '',
-      quotedRate: quotedRate || null
+    const application = await Application.create({
+      workerId: req.user.id,
+      jobId,
+      employerId: job.employerId,
+      coverLetter,
+      expectedSalary,
+      availabilityDate,
+      preferredShift
     });
 
-    await application.save();
-    await application.populate('applicant', 'name email phone location');
-    await application.populate('job', 'title salary');
-
-    // Update job applicant count
-    job.applicantsCount += 1;
-    await job.save();
+    // Increment applications count on job
+    await Job.findByIdAndUpdate(jobId, { $inc: { applicationsCount: 1 } });
 
     res.status(201).json({
       success: true,
@@ -53,124 +56,304 @@ exports.submitApplication = async (req, res) => {
       application
     });
   } catch (error) {
-    console.error('SubmitApplication error:', error);
+    console.error('ApplyForJob error:', error);
     res.status(500).json({ error: error.message || 'Server error' });
   }
 };
 
-// @desc    Get applications for a job (employer view)
-// @route   GET /api/applications/job/:jobId
-// @access  Private (only employer)
+// @desc    Get worker's applications
+// @route   GET /api/applications/worker/me
+// @access  Private (Worker only)
+exports.getMyApplications = async (req, res) => {
+  try {
+    const { status, page = 1, limit = 10 } = req.query;
+
+    let filter = { workerId: req.user.id };
+    if (status) filter.status = status;
+
+    const skip = (page - 1) * limit;
+
+    const applications = await Application.find(filter)
+      .populate('jobId', 'title location category salaryMin salaryMax')
+      .populate('employerId', 'name companyName rating')
+      .sort({ appliedAt: -1 })
+      .skip(skip)
+      .limit(parseInt(limit));
+
+    const total = await Application.countDocuments(filter);
+
+    res.status(200).json({
+      success: true,
+      count: applications.length,
+      total,
+      page: parseInt(page),
+      pages: Math.ceil(total / limit),
+      applications
+    });
+  } catch (error) {
+    console.error('GetMyApplications error:', error);
+    res.status(500).json({ error: error.message || 'Server error' });
+  }
+};
+
+// @desc    Get applications for employer's jobs
+// @route   GET /api/applications/employer/jobs/:jobId
+// @access  Private (Employer only)
 exports.getJobApplications = async (req, res) => {
   try {
-    const job = await Job.findById(req.params.jobId);
+    const { jobId } = req.params;
+    const { status, page = 1, limit = 10 } = req.query;
 
+    // Verify job belongs to employer
+    const job = await Job.findById(jobId);
     if (!job) {
       return res.status(404).json({ error: 'Job not found' });
     }
 
-    // Check if user is the employer
-    if (job.postedBy.toString() !== req.user.id) {
-      return res.status(403).json({ error: 'Not authorized to view these applications' });
+    if (job.employerId.toString() !== req.user.id) {
+      return res.status(403).json({ error: 'Not authorized' });
     }
 
-    const applications = await Application.find({ job: req.params.jobId })
-      .populate('applicant', 'name email phone skills location rating')
-      .sort({ createdAt: -1 });
+    let filter = { jobId };
+    if (status) filter.status = status;
+
+    const skip = (page - 1) * limit;
+
+    const applications = await Application.find(filter)
+      .populate('workerId', 'name phone email rating skills experience')
+      .sort({ appliedAt: -1 })
+      .skip(skip)
+      .limit(parseInt(limit));
+
+    const total = await Application.countDocuments(filter);
 
     res.status(200).json({
       success: true,
       count: applications.length,
+      total,
+      page: parseInt(page),
+      pages: Math.ceil(total / limit),
       applications
     });
   } catch (error) {
     console.error('GetJobApplications error:', error);
-    res.status(500).json({ error: 'Server error' });
+    res.status(500).json({ error: error.message || 'Server error' });
   }
 };
 
-// @desc    Get applications submitted by worker
-// @route   GET /api/applications/worker
-// @access  Private (workers only)
-exports.getWorkerApplications = async (req, res) => {
+// @desc    Get all applications for employer (across all jobs)
+// @route   GET /api/applications/employer/me
+// @access  Private (Employer only)
+exports.getEmployerApplications = async (req, res) => {
   try {
-    const applications = await Application.find({ applicant: req.user.id })
-      .populate('job', 'title salary location status')
-      .populate('applicant', 'name')
-      .sort({ createdAt: -1 });
+    const { status, jobId, page = 1, limit = 10 } = req.query;
+
+    let filter = { employerId: req.user.id };
+    if (status) filter.status = status;
+    if (jobId) filter.jobId = jobId;
+
+    const skip = (page - 1) * limit;
+
+    const applications = await Application.find(filter)
+      .populate('workerId', 'name phone email rating skills')
+      .populate('jobId', 'title location')
+      .sort({ appliedAt: -1 })
+      .skip(skip)
+      .limit(parseInt(limit));
+
+    const total = await Application.countDocuments(filter);
 
     res.status(200).json({
       success: true,
       count: applications.length,
+      total,
+      page: parseInt(page),
+      pages: Math.ceil(total / limit),
       applications
     });
   } catch (error) {
-    console.error('GetWorkerApplications error:', error);
-    res.status(500).json({ error: 'Server error' });
+    console.error('GetEmployerApplications error:', error);
+    res.status(500).json({ error: error.message || 'Server error' });
   }
 };
 
-// @desc    Accept application (employer)
-// @route   PATCH /api/applications/:id/accept
-// @access  Private (only employer)
-exports.acceptApplication = async (req, res) => {
+// @desc    Get single application details
+// @route   GET /api/applications/:id
+// @access  Private
+exports.getApplicationById = async (req, res) => {
   try {
-    const application = await Application.findById(req.params.id).populate('job');
+    const application = await Application.findById(req.params.id)
+      .populate('workerId', 'name phone email rating skills experience bio')
+      .populate('jobId')
+      .populate('employerId', 'name companyName');
 
     if (!application) {
       return res.status(404).json({ error: 'Application not found' });
     }
 
-    // Check authorization
-    if (application.job.postedBy.toString() !== req.user.id) {
+    // Check authorization (worker or employer)
+    if (application.workerId._id.toString() !== req.user.id && application.employerId._id.toString() !== req.user.id) {
       return res.status(403).json({ error: 'Not authorized' });
     }
 
-    // Update application
-    application.status = 'accepted';
-    const { acceptedRate, startDate, endDate } = req.body;
-    if (acceptedRate) {
-      application.acceptanceTerms = {
-        acceptedRate,
-        startDate,
-        endDate
-      };
-    }
-    await application.save();
-
-    // Update job accepted count
-    application.job.acceptedApplicants += 1;
-    await application.job.save();
-
     res.status(200).json({
       success: true,
-      message: 'Application accepted',
       application
     });
   } catch (error) {
-    console.error('AcceptApplication error:', error);
-    res.status(500).json({ error: 'Server error' });
+    console.error('GetApplicationById error:', error);
+    res.status(500).json({ error: error.message || 'Server error' });
   }
 };
 
-// @desc    Reject application (employer)
-// @route   PATCH /api/applications/:id/reject
-// @access  Private (only employer)
-exports.rejectApplication = async (req, res) => {
+// @desc    Update application status (Employer)
+// @route   PATCH /api/applications/:id/status
+// @access  Private (Employer only)
+exports.updateApplicationStatus = async (req, res) => {
   try {
-    const application = await Application.findById(req.params.id).populate('job');
+    const { status, notes, rejectionReason } = req.body;
+
+    if (!status) {
+      return res.status(400).json({ error: 'Status is required' });
+    }
+
+    const application = await Application.findById(req.params.id);
 
     if (!application) {
       return res.status(404).json({ error: 'Application not found' });
     }
 
     // Check authorization
-    if (application.job.postedBy.toString() !== req.user.id) {
+    if (application.employerId.toString() !== req.user.id) {
+      return res.status(403).json({ error: 'Not authorized' });
+    }
+
+    application.status = status;
+    if (notes) application.employerNotes = notes;
+    if (rejectionReason) application.rejectionReason = rejectionReason;
+    application.updatedAt = Date.now();
+
+    await application.save();
+
+    res.status(200).json({
+      success: true,
+      message: 'Application status updated',
+      application
+    });
+  } catch (error) {
+    console.error('UpdateApplicationStatus error:', error);
+    res.status(500).json({ error: error.message || 'Server error' });
+  }
+};
+
+// @desc    Schedule interview (Employer)
+// @route   PATCH /api/applications/:id/interview
+// @access  Private (Employer only)
+exports.scheduleInterview = async (req, res) => {
+  try {
+    const { scheduledDate, time, location, format, notes } = req.body;
+
+    if (!scheduledDate || !time || !format) {
+      return res.status(400).json({ error: 'Please provide all required fields' });
+    }
+
+    const application = await Application.findById(req.params.id);
+
+    if (!application) {
+      return res.status(404).json({ error: 'Application not found' });
+    }
+
+    if (application.employerId.toString() !== req.user.id) {
+      return res.status(403).json({ error: 'Not authorized' });
+    }
+
+    application.interviewDetails = {
+      scheduledDate,
+      time,
+      location,
+      format,
+      notes
+    };
+    application.status = 'interview_scheduled';
+    application.updatedAt = Date.now();
+
+    await application.save();
+
+    res.status(200).json({
+      success: true,
+      message: 'Interview scheduled',
+      application
+    });
+  } catch (error) {
+    console.error('ScheduleInterview error:', error);
+    res.status(500).json({ error: error.message || 'Server error' });
+  }
+};
+
+// @desc    Send job offer (Employer)
+// @route   PATCH /api/applications/:id/offer
+// @access  Private (Employer only)
+exports.sendOffer = async (req, res) => {
+  try {
+    const { offeredSalary, offeredPosition, expiryDate } = req.body;
+
+    if (!offeredSalary || !offeredPosition) {
+      return res.status(400).json({ error: 'Salary and position are required' });
+    }
+
+    const application = await Application.findById(req.params.id);
+
+    if (!application) {
+      return res.status(404).json({ error: 'Application not found' });
+    }
+
+    if (application.employerId.toString() !== req.user.id) {
+      return res.status(403).json({ error: 'Not authorized' });
+    }
+
+    application.offerDetails = {
+      offeredSalary,
+      offeredPosition,
+      offeredDate: Date.now(),
+      expiryDate
+    };
+    application.status = 'hired';
+    application.updatedAt = Date.now();
+
+    await application.save();
+
+    res.status(200).json({
+      success: true,
+      message: 'Job offer sent',
+      application
+    });
+  } catch (error) {
+    console.error('SendOffer error:', error);
+    res.status(500).json({ error: error.message || 'Server error' });
+  }
+};
+
+// @desc    Reject application (Employer)
+// @route   PATCH /api/applications/:id/reject
+// @access  Private (Employer only)
+exports.rejectApplication = async (req, res) => {
+  try {
+    const { reason } = req.body;
+
+    const application = await Application.findById(req.params.id);
+
+    if (!application) {
+      return res.status(404).json({ error: 'Application not found' });
+    }
+
+    if (application.employerId.toString() !== req.user.id) {
       return res.status(403).json({ error: 'Not authorized' });
     }
 
     application.status = 'rejected';
-    application.employerNotes = req.body.notes || '';
+    application.rejectionReason = reason || '';
+    application.updatedAt = Date.now();
+
     await application.save();
 
     res.status(200).json({
@@ -180,14 +363,14 @@ exports.rejectApplication = async (req, res) => {
     });
   } catch (error) {
     console.error('RejectApplication error:', error);
-    res.status(500).json({ error: 'Server error' });
+    res.status(500).json({ error: error.message || 'Server error' });
   }
 };
 
-// @desc    Withdraw application (worker)
-// @route   PATCH /api/applications/:id/withdraw
-// @access  Private (only worker)
-exports.withdrawApplication = async (req, res) => {
+// @desc    Shortlist application (Employer)
+// @route   PATCH /api/applications/:id/shortlist
+// @access  Private (Employer only)
+exports.shortlistApplication = async (req, res) => {
   try {
     const application = await Application.findById(req.params.id);
 
@@ -195,29 +378,30 @@ exports.withdrawApplication = async (req, res) => {
       return res.status(404).json({ error: 'Application not found' });
     }
 
-    // Check authorization
-    if (application.applicant.toString() !== req.user.id) {
+    if (application.employerId.toString() !== req.user.id) {
       return res.status(403).json({ error: 'Not authorized' });
     }
 
-    application.status = 'withdrawn';
+    application.status = 'shortlisted';
+    application.updatedAt = Date.now();
+
     await application.save();
 
     res.status(200).json({
       success: true,
-      message: 'Application withdrawn',
+      message: 'Application shortlisted',
       application
     });
   } catch (error) {
-    console.error('WithdrawApplication error:', error);
-    res.status(500).json({ error: 'Server error' });
+    console.error('ShortlistApplication error:', error);
+    res.status(500).json({ error: error.message || 'Server error' });
   }
 };
 
-// @desc    Rate after job completion
-// @route   PATCH /api/applications/:id/rate
-// @access  Private
-exports.rateApplication = async (req, res) => {
+// @desc    Cancel application (Worker)
+// @route   DELETE /api/applications/:id
+// @access  Private (Worker only)
+exports.cancelApplication = async (req, res) => {
   try {
     const application = await Application.findById(req.params.id);
 
@@ -225,82 +409,26 @@ exports.rateApplication = async (req, res) => {
       return res.status(404).json({ error: 'Application not found' });
     }
 
-    const { score, review, ratedBy } = req.body;
-
-    if (!score || score < 1 || score > 5) {
-      return res.status(400).json({ error: 'Score must be between 1 and 5' });
+    if (application.workerId.toString() !== req.user.id) {
+      return res.status(403).json({ error: 'Not authorized' });
     }
 
-    if (ratedBy === 'employer') {
-      if (application.job.postedBy.toString() !== req.user.id) {
-        return res.status(403).json({ error: 'Not authorized' });
-      }
-      application.employerRating = { score, review };
-    } else if (ratedBy === 'worker') {
-      if (application.applicant.toString() !== req.user.id) {
-        return res.status(403).json({ error: 'Not authorized' });
-      }
-      application.workerRating = { score, review };
+    // Only allow cancellation if not hired
+    if (application.status === 'hired' || application.status === 'completed') {
+      return res.status(400).json({ error: 'Cannot cancel hired or completed applications' });
     }
 
-    await application.save();
+    await Application.findByIdAndDelete(req.params.id);
 
-    // Update user rating in User model
-    const targetUserId = ratedBy === 'employer' ? application.applicant : application.job.postedBy;
-    const user = await User.findById(targetUserId);
-    if (user) {
-      const currentAverage = user.rating.average;
-      const currentCount = user.rating.count;
-      const newAverage = (currentAverage * currentCount + score) / (currentCount + 1);
-      user.rating.average = parseFloat(newAverage.toFixed(2));
-      user.rating.count = currentCount + 1;
-      await user.save();
-    }
+    // Decrement applications count on job
+    await Job.findByIdAndUpdate(application.jobId, { $inc: { applicationsCount: -1 } });
 
     res.status(200).json({
       success: true,
-      message: 'Rating submitted',
-      application
+      message: 'Application cancelled'
     });
   } catch (error) {
-    console.error('RateApplication error:', error);
-    res.status(500).json({ error: 'Server error' });
-  }
-};
-
-// @desc    Get single application
-// @route   GET /api/applications/:id
-// @access  Private
-exports.getApplication = async (req, res) => {
-  try {
-    const application = await Application.findById(req.params.id)
-      .populate('job')
-      .populate('applicant', 'name email phone skills location rating');
-
-    if (!application) {
-      return res.status(404).json({ error: 'Application not found' });
-    }
-
-    // Check authorization
-    const isWorker = application.applicant._id.toString() === req.user.id;
-    const isEmployer = application.job.postedBy.toString() === req.user.id;
-
-    if (!isWorker && !isEmployer) {
-      return res.status(403).json({ error: 'Not authorized to view this application' });
-    }
-
-    // Mark as viewed by employer
-    if (isEmployer && !application.viewedBy) {
-      application.viewedBy = true;
-      await application.save();
-    }
-
-    res.status(200).json({
-      success: true,
-      application
-    });
-  } catch (error) {
-    console.error('GetApplication error:', error);
-    res.status(500).json({ error: 'Server error' });
+    console.error('CancelApplication error:', error);
+    res.status(500).json({ error: error.message || 'Server error' });
   }
 };
