@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, use } from 'react';
 import { Navbar, Button, Breadcrumbs, LoadingSpinner } from '@/components';
 import ApplicationModal from '@/components/modals/ApplicationModal';
 import apiClient from '@/lib/api';
@@ -28,8 +28,8 @@ interface JobDetailsType {
   employerId: any;
 }
 
-export default function JobDetailsPage({ params }: { params: { id: string } }) {
-  const jobId = params.id;
+export default function JobDetailsPage({ params }: { params: Promise<{ id: string }> }) {
+  const { id: jobId } = use(params);
   const [job, setJob] = useState<JobDetailsType | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);

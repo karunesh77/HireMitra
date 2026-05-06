@@ -1,4 +1,4 @@
-import { Sidebar, Input, TextArea, Button } from '@/components';
+﻿import { Sidebar, Input, TextArea, Button } from '@/components';
 
 export default function EmployerSettingsPage() {
   const sidebarLinks = [
@@ -131,7 +131,7 @@ export default function EmployerSettingsPage() {
                     </div>
                     <input
                       type="checkbox"
-                      checked
+                      defaultChecked
                       className="w-5 h-5 accent-[#FF7A00] rounded"
                     />
                   </div>
@@ -143,7 +143,7 @@ export default function EmployerSettingsPage() {
                     </div>
                     <input
                       type="checkbox"
-                      checked
+                      defaultChecked
                       className="w-5 h-5 accent-[#FF7A00] rounded"
                     />
                   </div>
@@ -155,7 +155,7 @@ export default function EmployerSettingsPage() {
                     </div>
                     <input
                       type="checkbox"
-                      checked
+                      defaultChecked
                       className="w-5 h-5 accent-[#FF7A00] rounded"
                     />
                   </div>

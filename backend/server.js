@@ -29,6 +29,8 @@ app.use('/api/profile', require('./routes/profile'));
 app.use('/api/jobs', require('./routes/jobs'));
 app.use('/api/applications', require('./routes/applications'));
 app.use('/api/messages', require('./routes/messages'));
+app.use('/api/workers', require('./routes/workers'));
+app.use('/api/notifications', require('./routes/notifications'));
 
 // Error handling middleware
 app.use((err, req, res, next) => {

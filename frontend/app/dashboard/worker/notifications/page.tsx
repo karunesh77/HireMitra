@@ -1,153 +1,197 @@
-import { Sidebar, Tabs } from '@/components';
+'use client';
 
-export default function WorkerNotificationsPage() {
-  const sidebarLinks = [
-    { href: '/dashboard/worker', label: 'Dashboard', icon: '📊' },
-    { href: '/dashboard/worker/jobs', label: 'Browse Jobs', icon: '💼' },
-    { href: '/dashboard/worker/applications', label: 'Applications', icon: '📋' },
-    { href: '/dashboard/worker/saved-jobs', label: 'Saved Jobs', icon: '⭐' },
-    { href: '/dashboard/worker/notifications', label: 'Notifications', icon: '🔔' },
+import { useState, useEffect } from 'react';
+import { Navbar, Button, LoadingSpinner } from '@/components';
+import { Breadcrumbs } from '@/components';
+import Link from 'next/link';
+import apiClient from '@/lib/api';
+
+interface Notification {
+  _id: string;
+  type: string;
+  title: string;
+  body: string;
+  fromUserName?: string;
+  link?: string;
+  read: boolean;
+  createdAt: string;
+}
+
+export default function WorkerNotifications() {
+  const breadcrumbs = [
+    { label: 'Dashboard', href: '/dashboard/worker' },
+    { label: 'Notifications' }
   ];
 
-  const notificationTabs = ['All', 'Applications', 'Messages', 'Jobs', 'System'];
+  const [notifications, setNotifications] = useState<Notification[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [unreadCount, setUnreadCount] = useState(0);
 
-  const notifications = [
-    {
-      id: 1,
-      type: 'application',
-      title: 'Application Accepted!',
-      message: 'Your application for "Electrical Repair" has been accepted by Ace Construction',
-      timestamp: '2 hours ago',
-      read: false,
-      icon: '✅'
-    },
-    {
-      id: 2,
-      type: 'message',
-      title: 'New Message from John Doe',
-      message: 'Hi, I wanted to ask about your availability for the weekend job...',
-      timestamp: '4 hours ago',
-      read: false,
-      icon: '💬'
-    },
-    {
-      id: 3,
-      type: 'job',
-      title: 'New Job Match: Plumbing Work',
-      message: 'A new job that matches your skills has been posted nearby',
-      timestamp: '6 hours ago',
-      read: true,
-      icon: '🔧'
-    },
-    {
-      id: 4,
-      type: 'application',
-      title: 'Application Rejected',
-      message: 'Your application for "Carpentry Work" was not selected at this time',
-      timestamp: '1 day ago',
-      read: true,
-      icon: '❌'
-    },
-    {
-      id: 5,
-      type: 'system',
-      title: 'Profile Verification Complete',
-      message: 'Your profile has been verified and is now fully active',
-      timestamp: '2 days ago',
-      read: true,
-      icon: '📋'
-    },
-    {
-      id: 6,
-      type: 'job',
-      title: 'Job Expiring Soon',
-      message: 'The "Electrical Installation" job posting will expire in 2 days',
-      timestamp: '3 days ago',
-      read: true,
-      icon: '⏰'
+  const fetchNotifications = async () => {
+    try {
+      setIsLoading(true);
+      const res = await apiClient.get('/api/notifications?limit=50');
+      setNotifications(res.data.notifications || []);
+      setUnreadCount(res.data.unreadCount || 0);
+    } catch (err) {
+      console.error(err);
+    } finally {
+      setIsLoading(false);
     }
-  ];
+  };
+
+  useEffect(() => {
+    fetchNotifications();
+  }, []);
+
+  const handleMarkAllRead = async () => {
+    try {
+      await apiClient.patch('/api/notifications/read-all');
+      setNotifications(prev => prev.map(n => ({ ...n, read: true })));
+      setUnreadCount(0);
+    } catch (err) {
+      console.error(err);
+    }
+  };
+
+  const handleMarkRead = async (id: string) => {
+    try {
+      await apiClient.patch(`/api/notifications/${id}/read`);
+      setNotifications(prev => prev.map(n => n._id === id ? { ...n, read: true } : n));
+      setUnreadCount(prev => Math.max(0, prev - 1));
+    } catch {}
+  };
+
+  const handleDelete = async (id: string) => {
+    try {
+      await apiClient.delete(`/api/notifications/${id}`);
+      setNotifications(prev => prev.filter(n => n._id !== id));
+    } catch {}
+  };
+
+  const getIcon = (type: string) => {
+    switch (type) {
+      case 'message': return '💬';
+      case 'profile_view': return '👀';
+      case 'application_status': return '📋';
+      case 'new_application': return '📩';
+      case 'job_match': return '🎯';
+      default: return '🔔';
+    }
+  };
+
+  const getIconBg = (type: string) => {
+    switch (type) {
+      case 'message': return 'bg-blue-100';
+      case 'profile_view': return 'bg-purple-100';
+      case 'application_status': return 'bg-green-100';
+      case 'new_application': return 'bg-orange-100';
+      default: return 'bg-gray-100';
+    }
+  };
+
+  const formatTime = (dateStr: string) => {
+    const diff = Date.now() - new Date(dateStr).getTime();
+    const mins = Math.floor(diff / 60000);
+    const hours = Math.floor(diff / 3600000);
+    const days = Math.floor(diff / 86400000);
+    if (mins < 1) return 'Just now';
+    if (mins < 60) return `${mins}m ago`;
+    if (hours < 24) return `${hours}h ago`;
+    return `${days}d ago`;
+  };
 
   return (
     <div className="min-h-screen bg-gray-50">
-      <div className="flex gap-4">
-        {/* Sidebar */}
-        <Sidebar links={sidebarLinks} title="Dashboard" />
+      <Navbar />
 
-        {/* Main Content */}
-        <div className="flex-1 p-8">
-          <div className="max-w-4xl">
-            {/* Header */}
-            <div className="mb-8">
+      <div className="pt-20 px-4 sm:px-6 lg:px-8">
+        <div className="max-w-3xl mx-auto">
+          <Breadcrumbs items={breadcrumbs} className="mb-6" />
+
+          <div className="flex justify-between items-center mb-8">
+            <div>
               <h1 className="text-4xl font-bold text-[#001F3F] mb-2">Notifications</h1>
-              <p className="text-[#4A4A4A]">Stay updated with your applications and messages</p>
+              <p className="text-[#4A4A4A]">
+                {unreadCount > 0
+                  ? <span><span className="font-bold text-[#FF7A00]">{unreadCount}</span> unread</span>
+                  : 'All caught up! ✅'}
+              </p>
             </div>
+            {unreadCount > 0 && (
+              <Button variant="secondary" size="sm" onClick={handleMarkAllRead}>
+                ✓ Mark all read
+              </Button>
+            )}
+          </div>
 
-            {/* Tabs */}
-            <div className="mb-6 border-b border-[#E5E7EB]">
-              <div className="flex gap-8">
-                {notificationTabs.map((tab) => (
-                  <button
-                    key={tab}
-                    className={`pb-3 font-medium transition ${
-                      tab === 'All'
-                        ? 'border-b-2 border-[#FF7A00] text-[#FF7A00]'
-                        : 'text-[#4A4A4A] hover:text-[#001F3F]'
-                    }`}
-                  >
-                    {tab}
-                  </button>
-                ))}
-              </div>
+          {isLoading ? (
+            <div className="flex justify-center py-12"><LoadingSpinner /></div>
+          ) : notifications.length === 0 ? (
+            <div className="p-12 text-center bg-white border border-[#E5E7EB] rounded-xl">
+              <p className="text-5xl mb-4">🔔</p>
+              <p className="text-lg font-semibold text-[#001F3F]">No notifications yet</p>
+              <p className="text-sm text-[#4A4A4A] mt-2">When employers message you or view your profile, you'll see it here</p>
             </div>
-
-            {/* Notifications List */}
-            <div className="space-y-4">
-              {notifications.map((notification) => (
+          ) : (
+            <div className="space-y-3">
+              {notifications.map((notif) => (
                 <div
-                  key={notification.id}
-                  className={`p-6 rounded-lg border transition ${
-                    notification.read
+                  key={notif._id}
+                  className={`p-4 rounded-xl border transition ${
+                    notif.read
                       ? 'bg-white border-[#E5E7EB]'
-                      : 'bg-[#FFF4E5] border-[#FFE0B2]'
-                  } hover:shadow-md cursor-pointer`}
+                      : 'bg-[#FFF4E5] border-l-4 border-l-[#FF7A00] border-[#FFE0B2]'
+                  }`}
                 >
-                  <div className="flex gap-4 items-start">
-                    <div className="text-3xl flex-shrink-0">{notification.icon}</div>
+                  <div className="flex items-start gap-4">
+                    <div className={`w-10 h-10 rounded-full ${getIconBg(notif.type)} flex items-center justify-center text-xl flex-shrink-0`}>
+                      {getIcon(notif.type)}
+                    </div>
+
                     <div className="flex-1 min-w-0">
-                      <div className="flex gap-2 items-start justify-between">
-                        <div>
-                          <h3 className="font-semibold text-[#001F3F] mb-1">
-                            {notification.title}
-                          </h3>
-                          <p className="text-[#4A4A4A] text-sm">
-                            {notification.message}
+                      <div className="flex items-start justify-between gap-2">
+                        <div className="flex-1">
+                          <p className={`text-[#001F3F] ${!notif.read ? 'font-bold' : 'font-semibold'}`}>
+                            {notif.title}
+                            {!notif.read && (
+                              <span className="ml-2 inline-block w-2 h-2 bg-[#FF7A00] rounded-full align-middle"></span>
+                            )}
                           </p>
+                          <p className="text-sm text-[#4A4A4A] mt-1 leading-relaxed">{notif.body}</p>
                         </div>
-                        {!notification.read && (
-                          <div className="w-3 h-3 bg-[#FF7A00] rounded-full flex-shrink-0 mt-1"></div>
-                        )}
+                        <span className="text-xs text-[#4A4A4A] whitespace-nowrap flex-shrink-0">
+                          {formatTime(notif.createdAt)}
+                        </span>
                       </div>
-                      <p className="text-xs text-[#4A4A4A] mt-2">{notification.timestamp}</p>
+
+                      <div className="flex items-center gap-3 mt-3">
+                        {notif.link && (
+                          <Link href={notif.link} onClick={() => !notif.read && handleMarkRead(notif._id)}>
+                            <Button size="sm" variant="secondary">View →</Button>
+                          </Link>
+                        )}
+                        {!notif.read && (
+                          <button
+                            onClick={() => handleMarkRead(notif._id)}
+                            className="text-xs text-[#FF7A00] hover:underline font-medium"
+                          >
+                            Mark read
+                          </button>
+                        )}
+                        <button
+                          onClick={() => handleDelete(notif._id)}
+                          className="text-xs text-red-400 hover:text-red-600 hover:underline ml-auto"
+                        >
+                          Delete
+                        </button>
+                      </div>
                     </div>
                   </div>
                 </div>
               ))}
             </div>
-
-            {/* Empty State */}
-            {notifications.length === 0 && (
-              <div className="text-center py-12">
-                <div className="text-5xl mb-4">🔔</div>
-                <h3 className="text-xl font-semibold text-[#001F3F] mb-2">
-                  No Notifications
-                </h3>
-                <p className="text-[#4A4A4A]">
-                  You're all caught up! Check back later for updates
-                </p>
-              </div>
-            )}
-          </div>
+          )}
         </div>
       </div>
     </div>

@@ -28,7 +28,8 @@ export default function Checkbox({
         id={id || name}
         name={name}
         checked={checked}
-        onChange={onChange}
+        onChange={onChange || (() => {})}
+        readOnly={!onChange}
         disabled={disabled}
         required={required}
         className="w-5 h-5 rounded cursor-pointer accent-[#FF7A00] disabled:cursor-not-allowed"

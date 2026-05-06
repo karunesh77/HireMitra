@@ -12,10 +12,12 @@ export interface DecodedToken {
 }
 
 /**
- * Save token to localStorage
+ * Save token to localStorage AND cookie (cookie needed for middleware)
  */
 export const saveToken = (token: string): void => {
   localStorage.setItem(TOKEN_KEY, token);
+  // Also save in cookie so Next.js middleware can read it
+  document.cookie = `token=${token}; path=/; max-age=${7 * 24 * 60 * 60}; SameSite=Strict`;
 };
 
 /**
@@ -26,11 +28,13 @@ export const getToken = (): string | null => {
 };
 
 /**
- * Remove token from localStorage
+ * Remove token from localStorage AND cookie
  */
 export const removeToken = (): void => {
   localStorage.removeItem(TOKEN_KEY);
   localStorage.removeItem(USER_TYPE_KEY);
+  // Also remove cookie
+  document.cookie = 'token=; path=/; max-age=0';
 };
 
 /**

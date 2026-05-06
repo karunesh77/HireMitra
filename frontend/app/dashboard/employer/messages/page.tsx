@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect, useRef } from 'react';
+import { useSearchParams } from 'next/navigation';
 import { Navbar, Input, Button, LoadingSpinner } from '@/components';
 import { Breadcrumbs } from '@/components';
 import apiClient from '@/lib/api';
@@ -14,7 +15,7 @@ interface Participant {
 interface Conversation {
   _id: string;
   participantIds: Participant[];
-  participants: Participant[];
+  participants: Participant[]; // alias fallback
   lastMessage: { content: string; createdAt: string } | null;
   unreadCount: number;
 }
@@ -24,10 +25,9 @@ interface Message {
   senderId: string;
   content: string;
   createdAt: string;
-  isAI?: boolean;
 }
 
-export default function WorkerMessages() {
+export default function EmployerMessages() {
   const [conversations, setConversations] = useState<Conversation[]>([]);
   const [selectedConv, setSelectedConv] = useState<Conversation | null>(null);
   const [messages, setMessages] = useState<Message[]>([]);
@@ -37,13 +37,14 @@ export default function WorkerMessages() {
   const [isSending, setIsSending] = useState(false);
   const [currentUserId, setCurrentUserId] = useState('');
   const messagesEndRef = useRef<HTMLDivElement>(null);
+  const searchParams = useSearchParams();
+  const targetConvId = searchParams.get('conv');
 
   const breadcrumbs = [
-    { label: 'Dashboard', href: '/dashboard/worker' },
+    { label: 'Dashboard', href: '/dashboard/employer' },
     { label: 'Messages' }
   ];
 
-  // Get current user ID from token
   useEffect(() => {
     const token = localStorage.getItem('authToken');
     if (token) {
@@ -54,7 +55,6 @@ export default function WorkerMessages() {
     }
   }, []);
 
-  // Fetch conversations
   useEffect(() => {
     const fetchConversations = async () => {
       try {
@@ -62,9 +62,12 @@ export default function WorkerMessages() {
         const res = await apiClient.get('/api/messages/conversations');
         const convs = res.data.conversations || [];
         setConversations(convs);
-        // Auto-select first conversation
-        if (convs.length > 0 && !selectedConv) {
-          selectConversation(convs[0]);
+        if (convs.length > 0) {
+          // Auto-select by conv param from URL, or first conversation
+          const target = targetConvId
+            ? convs.find((c: Conversation) => c._id === targetConvId)
+            : convs[0];
+          if (target) selectConversation(target);
         }
       } catch (err) {
         console.error('Conversations fetch error:', err);
@@ -75,7 +78,6 @@ export default function WorkerMessages() {
     fetchConversations();
   }, []);
 
-  // Scroll to bottom when messages change
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [messages]);
@@ -86,9 +88,7 @@ export default function WorkerMessages() {
     try {
       const res = await apiClient.get(`/api/messages/${conv._id}`);
       setMessages(res.data.messages || []);
-      // Mark as read
       await apiClient.patch(`/api/messages/conversations/${conv._id}/read`).catch(() => {});
-      // Update unread count locally
       setConversations(prev =>
         prev.map(c => c._id === conv._id ? { ...c, unreadCount: 0 } : c)
       );
@@ -106,7 +106,6 @@ export default function WorkerMessages() {
     setNewMessage('');
     setIsSending(true);
 
-    // Optimistic update
     const tempMsg: Message = {
       _id: Date.now().toString(),
       senderId: currentUserId,
@@ -122,7 +121,6 @@ export default function WorkerMessages() {
         receiverId,
         content: msgContent,
       });
-      // Update last message in conversations list
       setConversations(prev =>
         prev.map(c => c._id === selectedConv._id
           ? { ...c, lastMessage: { content: msgContent, createdAt: new Date().toISOString() } }
@@ -131,7 +129,6 @@ export default function WorkerMessages() {
       );
     } catch (err) {
       console.error('Send message error:', err);
-      // Remove optimistic message on error
       setMessages(prev => prev.filter(m => m._id !== tempMsg._id));
       setNewMessage(msgContent);
     } finally {
@@ -146,21 +143,19 @@ export default function WorkerMessages() {
     }
   };
 
+  const formatTime = (dateStr: string) => {
+    return new Date(dateStr).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+  };
+
+  // Backend returns participantIds (populated), not participants
   const getParticipants = (conv: Conversation) =>
     conv.participantIds || conv.participants || [];
 
   const getOtherUser = (conv: Conversation) =>
     getParticipants(conv).find(p => p._id !== currentUserId);
 
-  const formatTime = (dateStr: string) => {
-    const date = new Date(dateStr);
-    return date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-  };
-
   const formatLastSeen = (dateStr: string) => {
-    const date = new Date(dateStr);
-    const now = new Date();
-    const diff = now.getTime() - date.getTime();
+    const diff = Date.now() - new Date(dateStr).getTime();
     const mins = Math.floor(diff / 60000);
     const hours = Math.floor(diff / 3600000);
     const days = Math.floor(diff / 86400000);
@@ -180,7 +175,7 @@ export default function WorkerMessages() {
 
           <div className="mb-6">
             <h1 className="text-4xl font-bold text-[#001F3F] mb-2">Messages</h1>
-            <p className="text-[#4A4A4A]">Chat with employers</p>
+            <p className="text-[#4A4A4A]">Chat with workers</p>
           </div>
 
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-0 h-[620px] border border-[#E5E7EB] rounded-xl overflow-hidden">
@@ -215,12 +210,12 @@ export default function WorkerMessages() {
                       >
                         <div className="flex items-start justify-between">
                           <div className="flex gap-3 flex-1 min-w-0">
-                            <div className="w-10 h-10 rounded-full bg-[#FFF4E5] flex items-center justify-center text-lg flex-shrink-0">
-                              🏢
+                            <div className="w-10 h-10 rounded-full bg-blue-50 flex items-center justify-center text-lg flex-shrink-0">
+                              👤
                             </div>
                             <div className="flex-1 min-w-0">
                               <h3 className="font-semibold text-[#001F3F] truncate">
-                                {otherUser?.name || 'User'}
+                                {otherUser?.name || 'Worker'}
                               </h3>
                               <p className="text-sm text-[#4A4A4A] truncate">
                                 {conv.lastMessage?.content || 'No messages yet'}
@@ -261,10 +256,10 @@ export default function WorkerMessages() {
                 <>
                   {/* Chat Header */}
                   <div className="p-4 border-b border-[#E5E7EB] flex items-center gap-4">
-                    <div className="w-10 h-10 rounded-full bg-[#FFF4E5] flex items-center justify-center text-xl">🏢</div>
+                    <div className="w-10 h-10 rounded-full bg-blue-50 flex items-center justify-center text-xl">👤</div>
                     <div>
                       <h2 className="font-bold text-[#001F3F]">
-                        {getOtherUser(selectedConv)?.name || 'User'}
+                        {getOtherUser(selectedConv)?.name || 'Worker'}
                       </h2>
                       <p className="text-xs text-green-500">● Online</p>
                     </div>
@@ -284,7 +279,7 @@ export default function WorkerMessages() {
                         return (
                           <div key={msg._id} className={`flex gap-2 ${isMine ? 'justify-end' : 'justify-start'}`}>
                             {!isMine && (
-                              <div className="w-8 h-8 rounded-full bg-[#FFF4E5] flex items-center justify-center text-sm flex-shrink-0">🏢</div>
+                              <div className="w-8 h-8 rounded-full bg-blue-50 flex items-center justify-center text-sm flex-shrink-0">👤</div>
                             )}
                             <div className={`max-w-xs lg:max-w-md ${isMine ? 'items-end' : 'items-start'} flex flex-col`}>
                               <div className={`px-4 py-2 rounded-2xl text-sm ${
@@ -297,7 +292,7 @@ export default function WorkerMessages() {
                               <p className="text-xs text-[#4A4A4A] mt-1">{formatTime(msg.createdAt)}</p>
                             </div>
                             {isMine && (
-                              <div className="w-8 h-8 rounded-full bg-blue-100 flex items-center justify-center text-sm flex-shrink-0">👤</div>
+                              <div className="w-8 h-8 rounded-full bg-[#FFF4E5] flex items-center justify-center text-sm flex-shrink-0">🏢</div>
                             )}
                           </div>
                         );

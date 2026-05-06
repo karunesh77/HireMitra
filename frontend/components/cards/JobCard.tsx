@@ -28,7 +28,7 @@ export default function JobCard({
   createdAt
 }: JobCardProps) {
   return (
-    <Link href={`/dashboard/jobs/${id}`}>
+    <Link href={`/dashboard/worker/jobs/${id}`}>
       <Card hoverable>
         {/* Header */}
         <div className="flex justify-between items-start mb-4">

@@ -1,6 +1,7 @@
 const Message = require('../models/Message');
 const Conversation = require('../models/Conversation');
 const User = require('../models/User');
+const { createNotification } = require('./notificationController');
 
 // Simple AI Response Generator (can be replaced with OpenAI API)
 const generateAIResponse = async (userMessage, userType) => {
@@ -79,6 +80,22 @@ exports.sendMessage = async (req, res) => {
     conversation.lastMessage = content;
     conversation.lastMessageAt = Date.now();
     await conversation.save();
+
+    // Create notification for receiver
+    const sender = await User.findById(req.user.id).select('name');
+    await createNotification({
+      userId: receiverId,
+      type: 'message',
+      title: 'New Message',
+      body: `${sender?.name || 'Someone'} sent you a message: "${content.substring(0, 60)}${content.length > 60 ? '...' : ''}"`,
+      fromUserId: req.user.id,
+      fromUserName: sender?.name,
+      link: `/dashboard/${
+        conversation.participantIds
+          ? '/messages'
+          : '/messages'
+      }`
+    });
 
     res.status(201).json({
       success: true,

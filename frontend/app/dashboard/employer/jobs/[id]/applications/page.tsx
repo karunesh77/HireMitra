@@ -1,8 +1,38 @@
-import { Navbar, Select, Button } from '@/components';
+'use client';
+
+import { useState, useEffect, use } from 'react';
+import { Navbar, Select, Button, LoadingSpinner } from '@/components';
 import { Breadcrumbs } from '@/components';
 import Link from 'next/link';
+import apiClient from '@/lib/api';
 
-export default function JobApplications({ params }: { params: { id: string } }) {
+interface Application {
+  _id: string;
+  workerId: { _id: string; name: string; email: string; skills?: string[]; experience?: number } | null;
+  jobId: { _id: string; title: string; location: string } | null;
+  status: string;
+  coverLetter: string;
+  expectedSalary: number;
+  createdAt: string;
+}
+
+interface Stats {
+  total: number;
+  pending: number;
+  hired: number;
+  rejected: number;
+}
+
+export default function JobApplications({ params }: { params: Promise<{ id: string }> }) {
+  const { id } = use(params);
+
+  const [applications, setApplications] = useState<Application[]>([]);
+  const [stats, setStats] = useState<Stats>({ total: 0, pending: 0, hired: 0, rejected: 0 });
+  const [selectedStatus, setSelectedStatus] = useState('');
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [jobTitle, setJobTitle] = useState('');
+
   const breadcrumbs = [
     { label: 'Dashboard', href: '/dashboard/employer' },
     { label: 'My Jobs', href: '/dashboard/employer/jobs' },
@@ -10,11 +40,78 @@ export default function JobApplications({ params }: { params: { id: string } }) 
   ];
 
   const statuses = [
-    { value: 'all', label: 'All Applications' },
+    { value: '', label: 'All Applications' },
     { value: 'pending', label: 'Pending' },
-    { value: 'accepted', label: 'Accepted' },
+    { value: 'hired', label: 'Accepted' },
     { value: 'rejected', label: 'Rejected' }
   ];
+
+  const fetchApplications = async (status: string = '') => {
+    try {
+      setIsLoading(true);
+      setError(null);
+      const params: any = {};
+      if (status) params.status = status;
+
+      const response = await apiClient.get(`/api/applications/employer/jobs/${id}`, { params });
+      const apps = response.data.applications || [];
+      setApplications(apps);
+
+      if (apps.length > 0 && apps[0].jobId) {
+        setJobTitle(apps[0].jobId.title);
+      }
+
+      // Calculate stats
+      const allRes = await apiClient.get(`/api/applications/employer/jobs/${id}`);
+      const allApps = allRes.data.applications || [];
+      setStats({
+        total: allApps.length,
+        pending: allApps.filter((a: Application) => a.status === 'pending').length,
+        hired: allApps.filter((a: Application) => a.status === 'hired').length,
+        rejected: allApps.filter((a: Application) => a.status === 'rejected').length,
+      });
+    } catch (err: any) {
+      setError('Failed to load applications');
+      console.error(err);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchApplications(selectedStatus);
+  }, [id, selectedStatus]);
+
+  const handleStatusChange = async (applicationId: string, newStatus: 'hired' | 'rejected' | 'pending') => {
+    try {
+      await apiClient.patch(`/api/applications/${applicationId}/status`, { status: newStatus });
+      setApplications(prev =>
+        prev.map(app => app._id === applicationId ? { ...app, status: newStatus } : app)
+      );
+      // Refresh stats
+      fetchApplications(selectedStatus);
+    } catch (err) {
+      console.error('Status update failed:', err);
+    }
+  };
+
+  const getStatusBadge = (status: string) => {
+    switch (status) {
+      case 'pending': return 'bg-yellow-100 text-yellow-700';
+      case 'hired': return 'bg-green-100 text-green-700';
+      case 'rejected': return 'bg-red-100 text-red-700';
+      default: return 'bg-gray-100 text-gray-700';
+    }
+  };
+
+  const getStatusLabel = (status: string) => {
+    switch (status) {
+      case 'hired': return 'Accepted';
+      case 'pending': return 'Pending';
+      case 'rejected': return 'Rejected';
+      default: return status;
+    }
+  };
 
   return (
     <div className="min-h-screen bg-white">
@@ -22,14 +119,12 @@ export default function JobApplications({ params }: { params: { id: string } }) 
 
       <div className="pt-20 px-4 sm:px-6 lg:px-8">
         <div className="max-w-6xl mx-auto">
-          {/* Breadcrumb */}
           <Breadcrumbs items={breadcrumbs} className="mb-6" />
 
-          {/* Header */}
           <div className="flex justify-between items-start mb-12">
             <div>
               <h1 className="text-4xl font-bold text-[#001F3F] mb-3">Job Applications</h1>
-              <p className="text-[#4A4A4A] text-lg">Senior Plumber • New York, NY</p>
+              {jobTitle && <p className="text-[#4A4A4A] text-lg">{jobTitle}</p>}
             </div>
             <Link href="/dashboard/employer/jobs">
               <Button variant="ghost">← Back to Jobs</Button>
@@ -37,136 +132,128 @@ export default function JobApplications({ params }: { params: { id: string } }) 
           </div>
 
           {/* Stats */}
-          <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-8">
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
             <div className="p-6 rounded-xl bg-white border border-[#E5E7EB]">
-              <p className="text-[#4A4A4A] text-sm mb-2">Total Applications</p>
-              <p className="text-3xl font-bold text-[#001F3F]">12</p>
+              <p className="text-[#4A4A4A] text-sm mb-2">Total</p>
+              <p className="text-3xl font-bold text-[#001F3F]">{stats.total}</p>
             </div>
             <div className="p-6 rounded-xl bg-white border border-[#E5E7EB]">
-              <p className="text-[#4A4A4A] text-sm mb-2">Pending Review</p>
-              <p className="text-3xl font-bold text-yellow-600">5</p>
+              <p className="text-[#4A4A4A] text-sm mb-2">Pending</p>
+              <p className="text-3xl font-bold text-yellow-600">{stats.pending}</p>
             </div>
             <div className="p-6 rounded-xl bg-white border border-[#E5E7EB]">
               <p className="text-[#4A4A4A] text-sm mb-2">Accepted</p>
-              <p className="text-3xl font-bold text-green-600">5</p>
+              <p className="text-3xl font-bold text-green-600">{stats.hired}</p>
             </div>
             <div className="p-6 rounded-xl bg-white border border-[#E5E7EB]">
               <p className="text-[#4A4A4A] text-sm mb-2">Rejected</p>
-              <p className="text-3xl font-bold text-red-600">2</p>
+              <p className="text-3xl font-bold text-red-600">{stats.rejected}</p>
             </div>
           </div>
 
           {/* Filter */}
           <div className="bg-white rounded-xl border border-[#E5E7EB] p-6 mb-8">
             <div className="flex gap-4 items-end">
-              <div className="flex-1">
-                <label className="block text-sm font-semibold text-[#001F3F] mb-2">Filter Applications</label>
+              <div className="w-64">
+                <label className="block text-sm font-semibold text-[#001F3F] mb-2">Filter by Status</label>
                 <Select
                   options={statuses}
                   placeholder="All Applications"
+                  value={selectedStatus}
+                  onChange={(e) => setSelectedStatus(e.target.value)}
                 />
               </div>
-              <Button variant="secondary">Sort by Date</Button>
             </div>
           </div>
 
           {/* Applications List */}
-          <div className="space-y-6">
-            {[1, 2, 3, 4, 5, 6].map((i) => (
-              <div key={i} className="p-6 rounded-xl bg-white border border-[#E5E7EB] hover:border-[#FF7A00] transition">
-                <div className="grid grid-cols-1 md:grid-cols-5 gap-6 items-start">
-                  {/* Applicant Info */}
-                  <div className="md:col-span-2">
-                    <div className="flex gap-4">
-                      <div className="w-16 h-16 rounded-full bg-[#FFF4E5] flex items-center justify-center text-2xl flex-shrink-0">
-                        👤
+          {isLoading ? (
+            <div className="flex justify-center py-12"><LoadingSpinner /></div>
+          ) : error ? (
+            <div className="p-4 bg-red-50 border border-red-200 rounded-lg">
+              <p className="text-red-600">{error}</p>
+            </div>
+          ) : applications.length === 0 ? (
+            <div className="p-12 text-center border border-[#E5E7EB] rounded-xl">
+              <p className="text-[#4A4A4A] text-lg">No applications found.</p>
+            </div>
+          ) : (
+            <div className="space-y-6">
+              {applications.map((app) => (
+                <div key={app._id} className="p-6 rounded-xl bg-white border border-[#E5E7EB] hover:border-[#FF7A00] transition">
+                  <div className="flex flex-col md:flex-row md:items-start gap-6">
+                    {/* Worker Info */}
+                    <div className="flex gap-4 flex-1">
+                      <div className="w-14 h-14 rounded-full bg-[#FFF4E5] flex items-center justify-center text-2xl flex-shrink-0">👤</div>
+                      <div>
+                        <h3 className="text-lg font-bold text-[#001F3F]">{app.workerId?.name || 'Worker'}</h3>
+                        <p className="text-sm text-[#4A4A4A]">{app.workerId?.email}</p>
+                        {app.workerId?.skills && app.workerId.skills.length > 0 && (
+                          <div className="flex gap-2 mt-2 flex-wrap">
+                            {app.workerId.skills.slice(0, 3).map((skill, i) => (
+                              <span key={i} className="text-xs bg-[#FFF4E5] text-[#FF7A00] px-2 py-1 rounded-full">{skill}</span>
+                            ))}
+                          </div>
+                        )}
                       </div>
-                      <div className="flex-1">
-                        <Link href={`/dashboard/employer/workers/${i}`}>
-                          <h3 className="text-lg font-bold text-[#001F3F] hover:text-[#FF7A00] cursor-pointer">John Doe {i}</h3>
-                        </Link>
-                        <p className="text-sm text-[#4A4A4A] mt-1">Plumber • 8 years experience</p>
-                        <p className="text-xs text-[#4A4A4A] mt-1">⭐ 4.8 rating (24 reviews)</p>
+                    </div>
+
+                    {/* Details */}
+                    <div className="flex gap-6 items-start">
+                      <div>
+                        <p className="text-xs text-[#4A4A4A] mb-1">Expected Salary</p>
+                        <p className="font-bold text-[#FF7A00]">₹{app.expectedSalary || 'N/A'}/hr</p>
                       </div>
+                      <div>
+                        <p className="text-xs text-[#4A4A4A] mb-1">Applied</p>
+                        <p className="font-semibold text-[#001F3F]">{new Date(app.createdAt).toLocaleDateString()}</p>
+                      </div>
+                      <span className={`text-xs px-3 py-1 rounded-full font-medium ${getStatusBadge(app.status)}`}>
+                        {getStatusLabel(app.status)}
+                      </span>
                     </div>
                   </div>
 
-                  {/* Application Details */}
-                  <div>
-                    <p className="text-xs text-[#4A4A4A] mb-1">Applied on</p>
-                    <p className="font-semibold text-[#001F3F]">{(i * 2) % 30 + 1} days ago</p>
-                  </div>
+                  {/* Cover Letter */}
+                  {app.coverLetter && (
+                    <div className="mt-4 p-4 bg-[#FFF4E5] rounded-lg border border-[#FFE0B2]">
+                      <p className="text-sm text-[#4A4A4A]">
+                        <span className="font-semibold text-[#FF7A00]">Cover Letter: </span>
+                        {app.coverLetter}
+                      </p>
+                    </div>
+                  )}
 
-                  {/* Hourly Rate */}
-                  <div>
-                    <p className="text-xs text-[#4A4A4A] mb-1">Expected Rate</p>
-                    <p className="font-semibold text-[#FF7A00]">₹{600 + i * 100}/hr</p>
-                  </div>
-
-                  {/* Status */}
-                  <div>
-                    <span className={`text-xs px-3 py-1 rounded-full font-medium inline-block ${
-                      i % 3 === 0 ? 'bg-yellow-100 text-yellow-700' :
-                      i % 3 === 1 ? 'bg-green-100 text-green-700' :
-                      'bg-red-100 text-red-700'
-                    }`}>
-                      {i % 3 === 0 ? 'Pending' : i % 3 === 1 ? 'Accepted' : 'Rejected'}
-                    </span>
+                  {/* Actions */}
+                  <div className="flex gap-3 mt-4">
+                    {app.status === 'pending' && (
+                      <>
+                        <Button variant="primary" size="sm" onClick={() => handleStatusChange(app._id, 'hired')}>✓ Accept</Button>
+                        <Button variant="danger" size="sm" onClick={() => handleStatusChange(app._id, 'rejected')}>✗ Reject</Button>
+                      </>
+                    )}
+                    {app.status === 'hired' && (
+                      <div className="flex items-center gap-3">
+                        <span className="text-green-700 font-semibold text-sm">✓ Accepted</span>
+                        <Button variant="secondary" size="sm" onClick={() => handleStatusChange(app._id, 'rejected')}>Reconsider</Button>
+                      </div>
+                    )}
+                    {app.status === 'rejected' && (
+                      <div className="flex items-center gap-3">
+                        <span className="text-red-700 font-semibold text-sm">✗ Rejected</span>
+                        <Button variant="secondary" size="sm" onClick={() => handleStatusChange(app._id, 'pending')}>Reconsider</Button>
+                      </div>
+                    )}
+                    {app.workerId?._id && (
+                      <Link href={`/dashboard/employer/workers/${app.workerId._id}`}>
+                        <Button variant="ghost" size="sm">View Profile</Button>
+                      </Link>
+                    )}
                   </div>
                 </div>
-
-                {/* Application Message */}
-                <div className="mt-4 p-4 bg-[#FFF4E5] rounded-lg border border-[#FFE0B2]">
-                  <p className="text-sm text-[#4A4A4A]">
-                    <span className="font-semibold text-[#FF7A00]">Message: </span>
-                    "I have extensive experience in residential and commercial plumbing. I'm very interested in this opportunity and confident I can deliver excellent results. Available to start immediately."
-                  </p>
-                </div>
-
-                {/* Action Buttons - Show different buttons based on status */}
-                {i % 3 === 0 ? (
-                  // Pending status
-                  <div className="flex gap-3 mt-4">
-                    <Button variant="primary" size="sm">Accept</Button>
-                    <Button variant="secondary" size="sm">Message</Button>
-                    <Button variant="danger" size="sm">Reject</Button>
-                    <Link href={`/dashboard/employer/workers/${i}`} className="flex-1">
-                      <Button variant="ghost" size="sm" className="w-full">View Full Profile</Button>
-                    </Link>
-                  </div>
-                ) : i % 3 === 1 ? (
-                  // Accepted status
-                  <div className="flex gap-3 mt-4">
-                    <div className="flex-1 flex items-center justify-between p-3 bg-green-50 rounded-lg border border-green-200">
-                      <p className="font-semibold text-green-700">✓ Application Accepted</p>
-                    </div>
-                    <Button variant="secondary" size="sm">Message</Button>
-                    <Link href={`/dashboard/employer/workers/${i}`} className="flex-1">
-                      <Button variant="ghost" size="sm" className="w-full">View Profile</Button>
-                    </Link>
-                  </div>
-                ) : (
-                  // Rejected status
-                  <div className="flex gap-3 mt-4">
-                    <div className="flex-1 flex items-center justify-between p-3 bg-red-50 rounded-lg border border-red-200">
-                      <p className="font-semibold text-red-700">✗ Application Rejected</p>
-                    </div>
-                    <Button variant="secondary" size="sm">Reconsider</Button>
-                    <Link href={`/dashboard/employer/workers/${i}`} className="flex-1">
-                      <Button variant="ghost" size="sm" className="w-full">View Profile</Button>
-                    </Link>
-                  </div>
-                )}
-              </div>
-            ))}
-          </div>
-
-          {/* Pagination */}
-          <div className="mt-12 flex justify-center">
-            <button className="px-6 py-3 rounded-lg bg-[#FF7A00] hover:bg-[#E66A00] text-white font-semibold transition shadow-md">
-              Load More Applications
-            </button>
-          </div>
+              ))}
+            </div>
+          )}
         </div>
       </div>
     </div>

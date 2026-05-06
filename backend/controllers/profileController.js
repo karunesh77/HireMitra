@@ -1,6 +1,7 @@
 const User = require('../models/User');
 const cloudinary = require('../config/cloudinary');
 const streamifier = require('streamifier');
+const { createNotification } = require('./notificationController');
 
 // @desc    Get user profile
 // @route   GET /api/profile
@@ -83,6 +84,70 @@ exports.updateProfile = async (req, res) => {
     });
   } catch (error) {
     console.error('UpdateProfile error:', error);
+    res.status(500).json({ error: error.message || 'Server error' });
+  }
+};
+
+// @desc    Browse all workers (for employers)
+// @route   GET /api/workers
+// @access  Private
+exports.getWorkers = async (req, res) => {
+  try {
+    const { search, skill, location, limit = 50, skip = 0 } = req.query;
+    const query = { userType: 'worker' };
+
+    if (search) {
+      query.$or = [
+        { name: { $regex: search, $options: 'i' } },
+        { skills: { $regex: search, $options: 'i' } },
+        { bio: { $regex: search, $options: 'i' } },
+      ];
+    }
+    if (skill) {
+      query.skills = { $regex: skill, $options: 'i' };
+    }
+    if (location) {
+      query.location = { $regex: location, $options: 'i' };
+    }
+
+    const workers = await User.find(query)
+      .select('-password')
+      .limit(Number(limit))
+      .skip(Number(skip))
+      .sort({ createdAt: -1 });
+
+    res.status(200).json({ success: true, workers, total: workers.length });
+  } catch (error) {
+    console.error('GetWorkers error:', error);
+    res.status(500).json({ error: error.message || 'Server error' });
+  }
+};
+
+// @desc    Get single worker profile (for employers)
+// @route   GET /api/workers/:id
+// @access  Private
+exports.getWorkerById = async (req, res) => {
+  try {
+    const worker = await User.findOne({ _id: req.params.id, userType: 'worker' }).select('-password');
+    if (!worker) return res.status(404).json({ error: 'Worker not found' });
+
+    // Notify worker that someone viewed their profile (only if viewer is different)
+    if (req.user.id !== req.params.id) {
+      const viewer = await User.findById(req.user.id).select('name');
+      await createNotification({
+        userId: worker._id,
+        type: 'profile_view',
+        title: 'Profile Viewed',
+        body: `${viewer?.name || 'An employer'} viewed your profile`,
+        fromUserId: req.user.id,
+        fromUserName: viewer?.name,
+        link: '/dashboard/worker/notifications'
+      });
+    }
+
+    res.status(200).json({ success: true, worker });
+  } catch (error) {
+    console.error('GetWorkerById error:', error);
     res.status(500).json({ error: error.message || 'Server error' });
   }
 };

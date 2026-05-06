@@ -1,6 +1,6 @@
 import axios, { AxiosInstance, AxiosError } from 'axios';
 
-const API_BASE_URL = 'http://localhost:5004';
+const API_BASE_URL = 'https://nn0h9t7rr0.execute-api.eu-north-1.amazonaws.com';
 
 // Create axios instance
 const apiClient: AxiosInstance = axios.create({

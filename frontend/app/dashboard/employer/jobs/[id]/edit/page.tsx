@@ -2,7 +2,8 @@ import { Navbar, Input, TextArea, Select, Checkbox, Button } from '@/components'
 import { Breadcrumbs } from '@/components';
 import Link from 'next/link';
 
-export default function EditJobPosting({ params }: { params: { id: string } }) {
+export default async function EditJobPosting({ params }: { params: Promise<{ id: string }> }) {
+  const { id } = await params;
   const breadcrumbs = [
     { label: 'Dashboard', href: '/dashboard/employer' },
     { label: 'My Jobs', href: '/dashboard/employer/jobs' },
