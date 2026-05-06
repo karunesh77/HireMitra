@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, Suspense } from 'react';
 import { useSearchParams } from 'next/navigation';
 import { Navbar, Input, Button, LoadingSpinner } from '@/components';
 import { Breadcrumbs } from '@/components';
@@ -27,7 +27,7 @@ interface Message {
   createdAt: string;
 }
 
-export default function EmployerMessages() {
+function EmployerMessagesContent() {
   const [conversations, setConversations] = useState<Conversation[]>([]);
   const [selectedConv, setSelectedConv] = useState<Conversation | null>(null);
   const [messages, setMessages] = useState<Message[]>([]);
@@ -324,5 +324,13 @@ export default function EmployerMessages() {
         </div>
       </div>
     </div>
+  );
+}
+
+export default function EmployerMessages() {
+  return (
+    <Suspense fallback={<div className="min-h-screen bg-white flex items-center justify-center"><LoadingSpinner /></div>}>
+      <EmployerMessagesContent />
+    </Suspense>
   );
 }
