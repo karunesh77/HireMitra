@@ -12,6 +12,9 @@ interface InputProps {
   className?: string;
   name?: string;
   id?: string;
+  min?: string | number;
+  max?: string | number;
+  step?: string | number;
 }
 
 export default function Input({
@@ -25,7 +28,10 @@ export default function Input({
   required = false,
   className = '',
   name,
-  id
+  id,
+  min,
+  max,
+  step,
 }: InputProps) {
   return (
     <div className="space-y-2">
@@ -43,6 +49,9 @@ export default function Input({
         value={value}
         onChange={onChange}
         disabled={disabled}
+        min={min}
+        max={max}
+        step={step}
         className={`
           w-full px-4 py-3 rounded-lg bg-white
           border border-[#E5E7EB]
