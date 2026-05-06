@@ -104,12 +104,12 @@ export default function EmployerApplications() {
           <Breadcrumbs items={breadcrumbs} className="mb-6" />
 
           <div className="mb-12">
-            <h1 className="text-4xl font-bold text-[#001F3F] mb-3">Job Applications</h1>
+            <h1 className="text-2xl sm:text-3xl lg:text-4xl font-bold text-[#001F3F] mb-3">Job Applications</h1>
             <p className="text-[#4A4A4A] text-lg">Review and manage applications from workers</p>
           </div>
 
           {/* Stats */}
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
+          <div className="grid grid-cols-2 sm:grid-cols-2 md:grid-cols-4 gap-4 mb-8">
             <div className="p-6 rounded-xl bg-white border border-[#E5E7EB]">
               <p className="text-[#4A4A4A] text-sm mb-2">Total</p>
               <p className="text-3xl font-bold text-[#001F3F]">{stats.total}</p>

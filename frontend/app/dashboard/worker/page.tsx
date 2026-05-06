@@ -144,7 +144,7 @@ export default function WorkerDashboard() {
         <div className="max-w-6xl mx-auto">
           {/* Header */}
           <div className="mb-12">
-            <h1 className="text-4xl font-bold text-[#001F3F] mb-3">
+            <h1 className="text-2xl sm:text-3xl lg:text-4xl font-bold text-[#001F3F] mb-3">
               Welcome Back, {user?.firstName}! 👷
             </h1>
             <p className="text-[#4A4A4A] text-lg">Here's what's happening on your account</p>
@@ -158,7 +158,7 @@ export default function WorkerDashboard() {
           )}
 
           {/* Stats Grid */}
-          <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-12">
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-6 mb-12">
             {/* Stat Card 1 */}
             <div className="p-6 rounded-xl bg-gradient-to-br from-[#FFF4E5] to-white border border-[#E5E7EB]">
               <div className="text-3xl mb-2">📋</div>

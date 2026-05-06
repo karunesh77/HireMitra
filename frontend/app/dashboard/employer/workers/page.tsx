@@ -88,13 +88,13 @@ export default function EmployerBrowseWorkers() {
           <Breadcrumbs items={breadcrumbs} className="mb-6" />
 
           <div className="mb-12">
-            <h1 className="text-4xl font-bold text-[#001F3F] mb-3">Browse Available Workers</h1>
+            <h1 className="text-2xl sm:text-3xl lg:text-4xl font-bold text-[#001F3F] mb-3">Browse Available Workers</h1>
             <p className="text-[#4A4A4A] text-lg">Find and connect with qualified workers for your projects</p>
           </div>
 
           {/* Filters */}
           <div className="bg-white rounded-xl border border-[#E5E7EB] p-8 mb-8">
-            <form onSubmit={handleSearch} className="grid grid-cols-1 md:grid-cols-4 gap-6">
+            <form onSubmit={handleSearch} className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-6">
               <Input
                 placeholder="Search by name or skill..."
                 type="text"

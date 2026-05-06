@@ -30,6 +30,7 @@ interface Message {
 export default function WorkerMessages() {
   const [conversations, setConversations] = useState<Conversation[]>([]);
   const [selectedConv, setSelectedConv] = useState<Conversation | null>(null);
+  const [showConvList, setShowConvList] = useState(true);
   const [messages, setMessages] = useState<Message[]>([]);
   const [newMessage, setNewMessage] = useState('');
   const [isLoadingConvs, setIsLoadingConvs] = useState(true);
@@ -82,6 +83,7 @@ export default function WorkerMessages() {
 
   const selectConversation = async (conv: Conversation) => {
     setSelectedConv(conv);
+    setShowConvList(false);
     setIsLoadingMsgs(true);
     try {
       const res = await apiClient.get(`/api/messages/${conv._id}`);
@@ -179,14 +181,14 @@ export default function WorkerMessages() {
           <Breadcrumbs items={breadcrumbs} className="mb-6" />
 
           <div className="mb-6">
-            <h1 className="text-4xl font-bold text-[#001F3F] mb-2">Messages</h1>
+            <h1 className="text-2xl sm:text-3xl lg:text-4xl font-bold text-[#001F3F] mb-2">Messages</h1>
             <p className="text-[#4A4A4A]">Chat with employers</p>
           </div>
 
-          <div className="grid grid-cols-1 lg:grid-cols-3 gap-0 h-[620px] border border-[#E5E7EB] rounded-xl overflow-hidden">
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-0 h-[calc(100vh-12rem)] min-h-[500px] border border-[#E5E7EB] rounded-xl overflow-hidden">
 
             {/* Conversations List */}
-            <div className="lg:col-span-1 border-r border-[#E5E7EB] bg-white flex flex-col">
+            <div className={`lg:col-span-1 border-r border-[#E5E7EB] bg-white flex flex-col ${selectedConv ? 'hidden lg:flex' : 'flex'}`}>
               <div className="p-4 border-b border-[#E5E7EB]">
                 <Input placeholder="Search conversations..." type="text" />
               </div>
@@ -248,7 +250,7 @@ export default function WorkerMessages() {
             </div>
 
             {/* Chat Area */}
-            <div className="lg:col-span-2 bg-white flex flex-col">
+            <div className={`lg:col-span-2 bg-white flex flex-col ${selectedConv ? 'flex' : 'hidden lg:flex'}`}>
               {!selectedConv ? (
                 <div className="flex-1 flex items-center justify-center text-center text-[#4A4A4A]">
                   <div>
@@ -261,6 +263,12 @@ export default function WorkerMessages() {
                 <>
                   {/* Chat Header */}
                   <div className="p-4 border-b border-[#E5E7EB] flex items-center gap-4">
+                    <button
+                      className="lg:hidden text-[#FF7A00] font-semibold text-sm mr-1"
+                      onClick={() => { setSelectedConv(null); setShowConvList(true); }}
+                    >
+                      ← Back
+                    </button>
                     <div className="w-10 h-10 rounded-full bg-[#FFF4E5] flex items-center justify-center text-xl">🏢</div>
                     <div>
                       <h2 className="font-bold text-[#001F3F]">

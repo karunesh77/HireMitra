@@ -8,7 +8,7 @@ const app = express();
 
 // Middleware
 app.use(cors({
-  origin: ['http://localhost:3000', 'http://localhost:3001', 'https://nn0h9t7rr0.execute-api.eu-north-1.amazonaws.com'],
+  origin: ['http://localhost:3000', 'http://localhost:3001', 'https://nn0h9t7rr0.execute-api.eu-north-1.amazonaws.com', 'https://hire-mitra.vercel.app'],
   credentials: true,
   methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
   allowedHeaders: ['Content-Type', 'Authorization']

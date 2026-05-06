@@ -139,7 +139,7 @@ export default function EmployerMyJobs() {
 
           <div className="flex justify-between items-start mb-12">
             <div>
-              <h1 className="text-4xl font-bold text-[#001F3F] mb-3">My Job Postings</h1>
+              <h1 className="text-2xl sm:text-3xl lg:text-4xl font-bold text-[#001F3F] mb-3">My Job Postings</h1>
               <p className="text-[#4A4A4A] text-lg">Manage and monitor your job postings</p>
             </div>
             <Link href="/dashboard/employer/jobs/create">
@@ -148,7 +148,7 @@ export default function EmployerMyJobs() {
           </div>
 
           {/* Stats */}
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
+          <div className="grid grid-cols-2 sm:grid-cols-2 md:grid-cols-4 gap-4 mb-8">
             <div className="p-6 rounded-xl bg-white border border-[#E5E7EB]">
               <p className="text-[#4A4A4A] text-sm mb-2">Total Jobs Posted</p>
               <p className="text-3xl font-bold text-[#001F3F]">{stats.total}</p>
@@ -169,7 +169,7 @@ export default function EmployerMyJobs() {
 
           {/* Filters */}
           <div className="bg-white rounded-xl border border-[#E5E7EB] p-6 mb-8">
-            <form onSubmit={handleSearch} className="grid grid-cols-1 md:grid-cols-4 gap-4">
+            <form onSubmit={handleSearch} className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4">
               <Input
                 placeholder="Search by job title..."
                 type="text"
@@ -231,7 +231,7 @@ export default function EmployerMyJobs() {
 
                   <p className="text-[#4A4A4A] mb-4 line-clamp-2 text-sm">{job.description}</p>
 
-                  <div className="grid grid-cols-3 gap-4 py-4 border-y border-[#E5E7EB]">
+                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 py-4 border-y border-[#E5E7EB]">
                     <div>
                       <p className="text-xs text-[#4A4A4A] mb-1">Salary Range</p>
                       <p className="font-bold text-[#001F3F]">₹{job.salaryMin}-{job.salaryMax}/hr</p>

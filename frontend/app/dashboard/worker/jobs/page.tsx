@@ -155,7 +155,7 @@ export default function WorkerBrowseJobs() {
 
           {/* Header */}
           <div className="mb-12">
-            <h1 className="text-4xl font-bold text-[#001F3F] mb-3">Browse Jobs</h1>
+            <h1 className="text-2xl sm:text-3xl lg:text-4xl font-bold text-[#001F3F] mb-3">Browse Jobs</h1>
             <p className="text-[#4A4A4A] text-lg">Find jobs that match your skills and experience</p>
           </div>
 
@@ -168,7 +168,7 @@ export default function WorkerBrowseJobs() {
 
           {/* Filters */}
           <div className="bg-white rounded-xl border border-[#E5E7EB] p-8 mb-8">
-            <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
+            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-6">
               <Input
                 placeholder="Search jobs..."
                 type="text"

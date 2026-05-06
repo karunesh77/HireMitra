@@ -135,12 +135,12 @@ export default function JobDetailsPage({ params }: { params: Promise<{ id: strin
 
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
             {/* Main Content */}
-            <div className="lg:col-span-2 space-y-8">
+            <div className="lg:col-span-2 space-y-8 order-2 lg:order-1">
               {/* Header Section */}
               <div className="p-8 rounded-xl bg-white border border-[#E5E7EB]">
                 <div className="flex items-start justify-between mb-6">
                   <div>
-                    <h1 className="text-4xl font-bold text-[#001F3F] mb-3">{job.title}</h1>
+                    <h1 className="text-2xl sm:text-3xl lg:text-4xl font-bold text-[#001F3F] mb-3">{job.title}</h1>
                     <p className="text-[#4A4A4A] text-lg">
                       {job.location} • {job.jobType}
                     </p>
@@ -152,7 +152,7 @@ export default function JobDetailsPage({ params }: { params: Promise<{ id: strin
                   </div>
                 </div>
 
-                <div className="grid grid-cols-3 gap-4 py-6 border-y border-[#E5E7EB]">
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 py-6 border-y border-[#E5E7EB]">
                   <div>
                     <p className="text-xs text-[#4A4A4A] mb-1">Salary Range</p>
                     <p className="font-bold text-[#FF7A00]">
@@ -249,7 +249,7 @@ export default function JobDetailsPage({ params }: { params: Promise<{ id: strin
             </div>
 
             {/* Sidebar */}
-            <div className="space-y-6">
+            <div className="space-y-6 order-1 lg:order-2">
               {/* Quick Stats */}
               <div className="p-6 rounded-xl bg-[#FFF4E5] border border-[#FFE0B2]">
                 <div className="space-y-4">
