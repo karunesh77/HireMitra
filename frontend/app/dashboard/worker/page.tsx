@@ -72,7 +72,7 @@ export default function WorkerDashboard() {
           const messagesRes = await apiClient.get('/api/messages/conversations');
           const conversations = messagesRes.data.conversations || [];
           unreadMessagesCount = conversations.reduce((acc: number, conv: any) => {
-            return acc + (conv.unreadCount || 0);
+            return acc + (Number(conv.unreadCount) || 0);
           }, 0);
         } catch (err) {
           console.log('Messages fetch failed, continuing...');

@@ -11,6 +11,7 @@ export default function Navbar() {
   const { isAuthenticated, user, logout, userType, isLoading } = useAuth();
   const [searchQuery, setSearchQuery] = useState('');
   const [showUserMenu, setShowUserMenu] = useState(false);
+  const [showMobileMenu, setShowMobileMenu] = useState(false);
   const [unreadCount, setUnreadCount] = useState(0);
 
   // Poll for unread notifications every 30 seconds
@@ -105,6 +106,23 @@ export default function Navbar() {
             <Link href="/contact" className="text-white hover:text-[#FF7A00] transition font-medium text-sm">Contact</Link>
           </div>
 
+          {/* Hamburger Menu Button (mobile only) */}
+          <button
+            className="lg:hidden p-2 text-white hover:text-[#FF7A00] transition"
+            onClick={() => setShowMobileMenu(!showMobileMenu)}
+            aria-label="Toggle menu"
+          >
+            {showMobileMenu ? (
+              <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+              </svg>
+            ) : (
+              <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
+              </svg>
+            )}
+          </button>
+
           {/* Auth Section */}
           <div className="flex items-center gap-2 sm:gap-3 flex-shrink-0 relative">
             {isLoading ? (
@@ -177,6 +195,37 @@ export default function Navbar() {
             )}
           </div>
         </div>
+
+        {/* Mobile Nav Menu */}
+        {showMobileMenu && (
+          <div className="lg:hidden border-t border-white/10 py-3 space-y-1">
+            <Link
+              href={isAuthenticated && userType === 'worker' ? '/dashboard/worker/jobs' : isAuthenticated && userType === 'employer' ? '/dashboard/employer' : '/jobs'}
+              onClick={() => setShowMobileMenu(false)}
+              className="block px-4 py-2 text-white hover:text-[#FF7A00] hover:bg-white/10 rounded-lg transition font-medium"
+            >
+              Jobs
+            </Link>
+            <Link
+              href={isAuthenticated && userType === 'employer' ? '/dashboard/employer/workers' : isAuthenticated && userType === 'worker' ? '/dashboard/worker' : '/workers'}
+              onClick={() => setShowMobileMenu(false)}
+              className="block px-4 py-2 text-white hover:text-[#FF7A00] hover:bg-white/10 rounded-lg transition font-medium"
+            >
+              Workers
+            </Link>
+            <Link href="/about" onClick={() => setShowMobileMenu(false)} className="block px-4 py-2 text-white hover:text-[#FF7A00] hover:bg-white/10 rounded-lg transition font-medium">About</Link>
+            <Link href="/contact" onClick={() => setShowMobileMenu(false)} className="block px-4 py-2 text-white hover:text-[#FF7A00] hover:bg-white/10 rounded-lg transition font-medium">Contact</Link>
+            {isAuthenticated && (
+              <>
+                <div className="border-t border-white/10 my-1"></div>
+                <Link href={getDashboardLink()} onClick={() => setShowMobileMenu(false)} className="block px-4 py-2 text-white hover:text-[#FF7A00] hover:bg-white/10 rounded-lg transition font-medium">Dashboard</Link>
+                <Link href={`${getDashboardLink()}/profile`} onClick={() => setShowMobileMenu(false)} className="block px-4 py-2 text-white hover:text-[#FF7A00] hover:bg-white/10 rounded-lg transition font-medium">Profile</Link>
+                <Link href={getNotifLink()} onClick={() => setShowMobileMenu(false)} className="block px-4 py-2 text-white hover:text-[#FF7A00] hover:bg-white/10 rounded-lg transition font-medium">Notifications</Link>
+                <Link href={`${getDashboardLink()}/settings`} onClick={() => setShowMobileMenu(false)} className="block px-4 py-2 text-white hover:text-[#FF7A00] hover:bg-white/10 rounded-lg transition font-medium">Settings</Link>
+              </>
+            )}
+          </div>
+        )}
 
         {/* Mobile Search */}
         <form onSubmit={handleSearch} className="sm:hidden pb-3">
