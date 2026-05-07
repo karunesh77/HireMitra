@@ -108,7 +108,7 @@ export default function Navbar() {
 
           {/* Hamburger Menu Button (mobile only) — right side */}
           <button
-            className="lg:hidden p-2 text-white hover:text-[#FF7A00] transition flex-shrink-0"
+            className="lg:hidden p-2 text-white hover:text-[#FF7A00] transition flex-shrink-0 ml-auto"
             onClick={() => setShowMobileMenu(!showMobileMenu)}
             aria-label="Toggle menu"
           >
