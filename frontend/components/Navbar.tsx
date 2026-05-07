@@ -57,23 +57,6 @@ export default function Navbar() {
     <nav className="fixed top-0 w-full bg-[#001F3F] border-b border-[#E5E7EB] z-50 shadow-sm">
       <div className="max-w-7xl mx-auto px-3 sm:px-4 md:px-6 lg:px-8">
         <div className="flex justify-between items-center h-16 gap-4">
-          {/* Hamburger Menu Button (mobile only) — left side */}
-          <button
-            className="lg:hidden p-2 text-white hover:text-[#FF7A00] transition flex-shrink-0"
-            onClick={() => setShowMobileMenu(!showMobileMenu)}
-            aria-label="Toggle menu"
-          >
-            {showMobileMenu ? (
-              <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-              </svg>
-            ) : (
-              <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
-              </svg>
-            )}
-          </button>
-
           {/* Logo */}
           <Link href="/" className="flex items-center gap-2 group flex-shrink-0">
             <div className="w-7 h-7 sm:w-8 sm:h-8 bg-[#FF7A00] rounded-lg flex items-center justify-center font-bold text-white text-sm sm:text-base">
@@ -122,6 +105,23 @@ export default function Navbar() {
             <Link href="/about" className="text-white hover:text-[#FF7A00] transition font-medium text-sm">About</Link>
             <Link href="/contact" className="text-white hover:text-[#FF7A00] transition font-medium text-sm">Contact</Link>
           </div>
+
+          {/* Hamburger Menu Button (mobile only) — right side */}
+          <button
+            className="lg:hidden p-2 text-white hover:text-[#FF7A00] transition flex-shrink-0"
+            onClick={() => setShowMobileMenu(!showMobileMenu)}
+            aria-label="Toggle menu"
+          >
+            {showMobileMenu ? (
+              <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+              </svg>
+            ) : (
+              <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
+              </svg>
+            )}
+          </button>
 
           {/* Auth Section */}
           <div className="flex items-center gap-2 sm:gap-3 flex-shrink-0 relative">
