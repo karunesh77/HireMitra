@@ -57,6 +57,23 @@ export default function Navbar() {
     <nav className="fixed top-0 w-full bg-[#001F3F] border-b border-[#E5E7EB] z-50 shadow-sm">
       <div className="max-w-7xl mx-auto px-3 sm:px-4 md:px-6 lg:px-8">
         <div className="flex justify-between items-center h-16 gap-4">
+          {/* Hamburger Menu Button (mobile only) — left side */}
+          <button
+            className="lg:hidden p-2 text-white hover:text-[#FF7A00] transition flex-shrink-0"
+            onClick={() => setShowMobileMenu(!showMobileMenu)}
+            aria-label="Toggle menu"
+          >
+            {showMobileMenu ? (
+              <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+              </svg>
+            ) : (
+              <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
+              </svg>
+            )}
+          </button>
+
           {/* Logo */}
           <Link href="/" className="flex items-center gap-2 group flex-shrink-0">
             <div className="w-7 h-7 sm:w-8 sm:h-8 bg-[#FF7A00] rounded-lg flex items-center justify-center font-bold text-white text-sm sm:text-base">
@@ -105,23 +122,6 @@ export default function Navbar() {
             <Link href="/about" className="text-white hover:text-[#FF7A00] transition font-medium text-sm">About</Link>
             <Link href="/contact" className="text-white hover:text-[#FF7A00] transition font-medium text-sm">Contact</Link>
           </div>
-
-          {/* Hamburger Menu Button (mobile only) */}
-          <button
-            className="lg:hidden p-2 text-white hover:text-[#FF7A00] transition"
-            onClick={() => setShowMobileMenu(!showMobileMenu)}
-            aria-label="Toggle menu"
-          >
-            {showMobileMenu ? (
-              <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-              </svg>
-            ) : (
-              <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
-              </svg>
-            )}
-          </button>
 
           {/* Auth Section */}
           <div className="flex items-center gap-2 sm:gap-3 flex-shrink-0 relative">
@@ -188,10 +188,10 @@ export default function Navbar() {
                 )}
               </>
             ) : (
-              <>
-                <Link href="/auth/login" className="px-3 sm:px-4 py-2 text-white hover:text-[#FF7A00] transition font-medium text-sm sm:text-base">Login</Link>
-                <Link href="/auth/register" className="px-3 sm:px-4 py-2 rounded-lg bg-[#FF7A00] hover:bg-[#E66A00] text-white transition font-medium text-sm sm:text-base shadow-md">Register</Link>
-              </>
+              <div className="hidden lg:flex items-center gap-3">
+                <Link href="/auth/login" className="px-4 py-2 text-white hover:text-[#FF7A00] transition font-medium text-sm">Login</Link>
+                <Link href="/auth/register" className="px-4 py-2 rounded-lg bg-[#FF7A00] hover:bg-[#E66A00] text-white transition font-medium text-sm shadow-md">Register</Link>
+              </div>
             )}
           </div>
         </div>
@@ -215,13 +215,19 @@ export default function Navbar() {
             </Link>
             <Link href="/about" onClick={() => setShowMobileMenu(false)} className="block px-4 py-2 text-white hover:text-[#FF7A00] hover:bg-white/10 rounded-lg transition font-medium">About</Link>
             <Link href="/contact" onClick={() => setShowMobileMenu(false)} className="block px-4 py-2 text-white hover:text-[#FF7A00] hover:bg-white/10 rounded-lg transition font-medium">Contact</Link>
-            {isAuthenticated && (
+            {isAuthenticated ? (
               <>
                 <div className="border-t border-white/10 my-1"></div>
                 <Link href={getDashboardLink()} onClick={() => setShowMobileMenu(false)} className="block px-4 py-2 text-white hover:text-[#FF7A00] hover:bg-white/10 rounded-lg transition font-medium">Dashboard</Link>
                 <Link href={`${getDashboardLink()}/profile`} onClick={() => setShowMobileMenu(false)} className="block px-4 py-2 text-white hover:text-[#FF7A00] hover:bg-white/10 rounded-lg transition font-medium">Profile</Link>
                 <Link href={getNotifLink()} onClick={() => setShowMobileMenu(false)} className="block px-4 py-2 text-white hover:text-[#FF7A00] hover:bg-white/10 rounded-lg transition font-medium">Notifications</Link>
                 <Link href={`${getDashboardLink()}/settings`} onClick={() => setShowMobileMenu(false)} className="block px-4 py-2 text-white hover:text-[#FF7A00] hover:bg-white/10 rounded-lg transition font-medium">Settings</Link>
+              </>
+            ) : (
+              <>
+                <div className="border-t border-white/10 my-1"></div>
+                <Link href="/auth/login" onClick={() => setShowMobileMenu(false)} className="block px-4 py-2 text-white hover:text-[#FF7A00] hover:bg-white/10 rounded-lg transition font-medium">Login</Link>
+                <Link href="/auth/register" onClick={() => setShowMobileMenu(false)} className="block px-4 py-2 text-[#FF7A00] font-semibold hover:bg-white/10 rounded-lg transition">Register</Link>
               </>
             )}
           </div>
