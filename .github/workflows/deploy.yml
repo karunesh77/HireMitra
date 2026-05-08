@@ -46,10 +46,10 @@ jobs:
           NEXT_PUBLIC_API_URL: ${{ secrets.NEXT_PUBLIC_API_URL }}
 
   # ─────────────────────────────────────────
-  # JOB 2: Deploy to Vercel (only on push to main)
+  # JOB 2: Deploy Frontend to Vercel
   # ─────────────────────────────────────────
-  deploy:
-    name: 🚀 Deploy to Vercel
+  deploy-frontend:
+    name: 🚀 Deploy Frontend to Vercel
     runs-on: ubuntu-latest
     needs: check
     if: github.event_name == 'push' && (github.ref == 'refs/heads/main' || github.ref == 'refs/heads/master')
@@ -84,5 +84,52 @@ jobs:
           VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
           VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID }}
 
-      - name: ✅ Deployment Success
-        run: echo "🎉 HireMitra deployed successfully to Vercel!"
+      - name: ✅ Frontend Deployed
+        run: echo "🎉 Frontend deployed to Vercel!"
+
+  # ─────────────────────────────────────────
+  # JOB 3: Deploy Backend to AWS Lambda
+  # ─────────────────────────────────────────
+  deploy-backend:
+    name: ☁️ Deploy Backend to Lambda
+    runs-on: ubuntu-latest
+    needs: check
+    if: github.event_name == 'push' && (github.ref == 'refs/heads/main' || github.ref == 'refs/heads/master')
+
+    steps:
+      - name: 📥 Checkout code
+        uses: actions/checkout@v4
+
+      - name: ⚙️ Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: 📦 Install backend dependencies
+        working-directory: backend
+        run: |
+          mkdir -p lambda-deployment
+          cp lambda.js package.json package-lock.json lambda-deployment/
+          cp -r config controllers middleware models routes lambda-deployment/
+          cd lambda-deployment
+          npm ci --omit=dev
+
+      - name: 🗜️ Create deployment zip
+        working-directory: backend
+        run: |
+          cd lambda-deployment
+          zip -r ../backend-lambda.zip .
+          cd ..
+          echo "✅ Zip size: $(du -h backend-lambda.zip | cut -f1)"
+
+      - name: ☁️ Deploy to AWS Lambda
+        uses: appleboy/lambda-action@v0.2.0
+        with:
+          aws_access_key_id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws_secret_access_key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws_region: eu-north-1
+          function_name: HireMitra-Backend
+          zip_file: backend/backend-lambda.zip
+
+      - name: ✅ Backend Deployed
+        run: echo "🎉 Backend deployed to AWS Lambda!"
