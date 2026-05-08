@@ -3,11 +3,10 @@ const Conversation = require('../models/Conversation');
 const User = require('../models/User');
 const { createNotification } = require('./notificationController');
 
-// Simple AI Response Generator (can be replaced with OpenAI API)
+// Simple AI Response Generator
 const generateAIResponse = async (userMessage, userType) => {
   const lowerMessage = userMessage.toLowerCase();
 
-  // Job-related responses for workers
   if (userType === 'worker') {
     if (lowerMessage.includes('salary') || lowerMessage.includes('pay')) {
       return "I can help you with salary information! The average pay varies by skill and location. Most jobs offer between ₹500-1200 daily. Would you like recommendations based on your skills?";
@@ -23,7 +22,6 @@ const generateAIResponse = async (userMessage, userType) => {
     }
   }
 
-  // Job-related responses for employers
   if (userType === 'employer') {
     if (lowerMessage.includes('post') || lowerMessage.includes('job')) {
       return "To post a job:\n1. Go to 'Post Jobs'\n2. Fill in job details (title, description, skills required)\n3. Set salary range\n4. Add benefits\n5. Publish\nTip: Clear job descriptions get more applications!";
@@ -36,12 +34,10 @@ const generateAIResponse = async (userMessage, userType) => {
     }
   }
 
-  // Default helpful response
   if (lowerMessage.includes('help') || lowerMessage.includes('how')) {
     return "I'm HireMitra's AI assistant! I can help you with:\n- Job posting and management\n- Finding workers or jobs\n- Application tracking\n- Payment and earnings\n- Platform features\n\nWhat would you like to know?";
   }
 
-  // Fallback response
   return "Thanks for your message! I'm here to help. Could you be more specific about what you need? I can help with jobs, applications, payments, and more.";
 };
 
@@ -56,7 +52,6 @@ exports.sendMessage = async (req, res) => {
       return res.status(400).json({ error: 'Please provide all required fields' });
     }
 
-    // Verify conversation exists and user is participant
     const conversation = await Conversation.findById(conversationId);
     if (!conversation) {
       return res.status(404).json({ error: 'Conversation not found' });
@@ -76,9 +71,17 @@ exports.sendMessage = async (req, res) => {
       messageType
     });
 
-    // Update conversation
+    // Update conversation - store lastMessage as string, update timestamp
     conversation.lastMessage = content;
     conversation.lastMessageAt = Date.now();
+
+    // Increment unread count for receiver
+    const currentUnread = conversation.unreadCount?.get(receiverId.toString()) || 0;
+    if (!conversation.unreadCount) {
+      conversation.unreadCount = new Map();
+    }
+    conversation.unreadCount.set(receiverId.toString(), currentUnread + 1);
+
     await conversation.save();
 
     // Create notification for receiver
@@ -115,16 +118,13 @@ exports.sendAIMessage = async (req, res) => {
       return res.status(400).json({ error: 'Conversation ID and content are required' });
     }
 
-    // Get user details
     const user = await User.findById(req.user.id);
 
-    // Find or create AI conversation
     let conversation = await Conversation.findById(conversationId);
     if (!conversation) {
       return res.status(404).json({ error: 'Conversation not found' });
     }
 
-    // Save user message
     const userMessage = await Message.create({
       conversationId,
       senderId: req.user.id,
@@ -134,10 +134,8 @@ exports.sendAIMessage = async (req, res) => {
       isAI: false
     });
 
-    // Generate AI response
     const aiResponse = await generateAIResponse(content, user.userType);
 
-    // Save AI response
     const aiMessage = await Message.create({
       conversationId,
       senderId: null,
@@ -147,7 +145,6 @@ exports.sendAIMessage = async (req, res) => {
       isAI: true
     });
 
-    // Update conversation
     conversation.lastMessage = aiResponse;
     conversation.lastMessageAt = Date.now();
     await conversation.save();
@@ -171,7 +168,6 @@ exports.getMessages = async (req, res) => {
     const { conversationId } = req.params;
     const { page = 1, limit = 50 } = req.query;
 
-    // Verify conversation and user is participant
     const conversation = await Conversation.findById(conversationId);
     if (!conversation) {
       return res.status(404).json({ error: 'Conversation not found' });
@@ -213,11 +209,11 @@ exports.getMessages = async (req, res) => {
 };
 
 // @desc    Get conversations for user
-// @route   GET /api/messages/conversations/me
+// @route   GET /api/messages/conversations
 // @access  Private
 exports.getConversations = async (req, res) => {
   try {
-    const { page = 1, limit = 10 } = req.query;
+    const { page = 1, limit = 20 } = req.query;
     const skip = (page - 1) * limit;
 
     const conversations = await Conversation.find({
@@ -235,13 +231,32 @@ exports.getConversations = async (req, res) => {
       archivedBy: { $ne: req.user.id }
     });
 
+    // Transform conversations to include proper unreadCount as number and lastMessage as object
+    const transformedConversations = conversations.map(conv => {
+      const convObj = conv.toObject();
+      // Get unread count for current user from the Map
+      const userUnread = convObj.unreadCount instanceof Map
+        ? convObj.unreadCount.get(req.user.id) || 0
+        : (convObj.unreadCount && typeof convObj.unreadCount === 'object')
+          ? convObj.unreadCount[req.user.id] || 0
+          : 0;
+
+      return {
+        ...convObj,
+        unreadCount: userUnread,
+        lastMessage: convObj.lastMessage
+          ? { content: convObj.lastMessage, createdAt: convObj.lastMessageAt || convObj.updatedAt }
+          : null,
+      };
+    });
+
     res.status(200).json({
       success: true,
-      count: conversations.length,
+      count: transformedConversations.length,
       total,
       page: parseInt(page),
       pages: Math.ceil(total / limit),
-      conversations
+      conversations: transformedConversations
     });
   } catch (error) {
     console.error('GetConversations error:', error);
@@ -272,6 +287,8 @@ exports.startConversation = async (req, res) => {
     });
 
     if (conversation) {
+      // Populate and return existing
+      await conversation.populate('participantIds', 'name email profileImage userType');
       return res.status(200).json({
         success: true,
         message: 'Conversation already exists',
@@ -286,6 +303,8 @@ exports.startConversation = async (req, res) => {
       subject,
       jobId
     });
+
+    await conversation.populate('participantIds', 'name email profileImage userType');
 
     res.status(201).json({
       success: true,
@@ -305,10 +324,18 @@ exports.markConversationRead = async (req, res) => {
   try {
     const { conversationId } = req.params;
 
+    // Mark all messages in conversation as read
     await Message.updateMany(
       { conversationId, receiverId: req.user.id, isRead: false },
       { isRead: true, readAt: Date.now() }
     );
+
+    // Reset unread count for this user in the conversation
+    const conversation = await Conversation.findById(conversationId);
+    if (conversation && conversation.unreadCount) {
+      conversation.unreadCount.set(req.user.id, 0);
+      await conversation.save();
+    }
 
     res.status(200).json({
       success: true,

@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect, useRef } from 'react';
-import { Navbar, Input, Button, LoadingSpinner } from '@/components';
+import { Navbar, Input, Button } from '@/components';
 import { Breadcrumbs } from '@/components';
 import apiClient from '@/lib/api';
 
@@ -21,7 +21,7 @@ interface Conversation {
 
 interface Message {
   _id: string;
-  senderId: string;
+  senderId: string | { _id: string; name?: string; email?: string; profileImage?: string };
   content: string;
   createdAt: string;
   isAI?: boolean;
@@ -159,6 +159,12 @@ export default function WorkerMessages() {
     return date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
   };
 
+  const getSenderId = (msg: Message): string => {
+    if (!msg.senderId) return '';
+    if (typeof msg.senderId === 'string') return msg.senderId;
+    return msg.senderId._id || '';
+  };
+
   const formatLastSeen = (dateStr: string) => {
     const date = new Date(dateStr);
     const now = new Date();
@@ -195,7 +201,17 @@ export default function WorkerMessages() {
 
               <div className="overflow-y-auto flex-1">
                 {isLoadingConvs ? (
-                  <div className="flex justify-center py-8"><LoadingSpinner /></div>
+                  <div className="p-2 space-y-2">
+                    {[1, 2, 3].map(i => (
+                      <div key={i} className="p-4 animate-pulse flex gap-3">
+                        <div className="w-10 h-10 rounded-full bg-gray-200 flex-shrink-0" />
+                        <div className="flex-1 space-y-2">
+                          <div className="h-4 bg-gray-200 rounded w-1/2" />
+                          <div className="h-3 bg-gray-100 rounded w-3/4" />
+                        </div>
+                      </div>
+                    ))}
+                  </div>
                 ) : conversations.length === 0 ? (
                   <div className="p-6 text-center text-[#4A4A4A]">
                     <p className="text-2xl mb-2">💬</p>
@@ -281,14 +297,21 @@ export default function WorkerMessages() {
                   {/* Messages */}
                   <div className="flex-1 overflow-y-auto p-4 space-y-3">
                     {isLoadingMsgs ? (
-                      <div className="flex justify-center py-8"><LoadingSpinner /></div>
+                      <div className="space-y-3 py-4">
+                        {[1, 2, 3].map(i => (
+                          <div key={i} className={`flex gap-2 ${i % 2 === 0 ? 'justify-end' : 'justify-start'} animate-pulse`}>
+                            <div className="w-8 h-8 rounded-full bg-gray-200 flex-shrink-0" />
+                            <div className={`h-10 bg-gray-200 rounded-2xl ${i % 2 === 0 ? 'w-48' : 'w-40'}`} />
+                          </div>
+                        ))}
+                      </div>
                     ) : messages.length === 0 ? (
                       <div className="flex items-center justify-center h-full text-[#4A4A4A]">
                         <p className="text-sm">No messages yet. Say hello! 👋</p>
                       </div>
                     ) : (
                       messages.map((msg) => {
-                        const isMine = msg.senderId === currentUserId;
+                        const isMine = getSenderId(msg) === currentUserId;
                         return (
                           <div key={msg._id} className={`flex gap-2 ${isMine ? 'justify-end' : 'justify-start'}`}>
                             {!isMine && (

@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { Navbar, Button, LoadingSpinner } from '@/components';
+import { Navbar, Button } from '@/components';
 import { Breadcrumbs } from '@/components';
 import Link from 'next/link';
 import apiClient from '@/lib/api';
@@ -100,7 +100,7 @@ export default function EmployerNotifications() {
   };
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="min-h-screen bg-[#FAFAFA]">
       <Navbar />
 
       <div className="pt-20 px-4 sm:px-6 lg:px-8">
@@ -124,7 +124,20 @@ export default function EmployerNotifications() {
           </div>
 
           {isLoading ? (
-            <div className="flex justify-center py-12"><LoadingSpinner /></div>
+            <div className="space-y-3">
+              {[1, 2, 3, 4].map(i => (
+                <div key={i} className="p-4 rounded-xl border border-[#E5E7EB] bg-white animate-pulse">
+                  <div className="flex items-start gap-4">
+                    <div className="w-10 h-10 rounded-full bg-gray-200 flex-shrink-0" />
+                    <div className="flex-1 space-y-2">
+                      <div className="h-4 bg-gray-200 rounded w-1/3" />
+                      <div className="h-3 bg-gray-100 rounded w-2/3" />
+                      <div className="h-3 bg-gray-100 rounded w-1/4 mt-3" />
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
           ) : notifications.length === 0 ? (
             <div className="p-12 text-center bg-white border border-[#E5E7EB] rounded-xl">
               <p className="text-5xl mb-4">🔔</p>
