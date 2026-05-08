@@ -1,5 +1,11 @@
+import type { Metadata } from 'next';
 import { Navbar } from '@/components';
 import Link from 'next/link';
+
+export const metadata: Metadata = {
+  title: 'Privacy Policy - HireMitra',
+  description: 'Read HireMitra privacy policy. Learn how we protect your data and personal information.',
+};
 
 export default function PrivacyPage() {
   return (

@@ -5,6 +5,7 @@ import { Navbar, Select, Button, LoadingSpinner } from '@/components';
 import { Breadcrumbs } from '@/components';
 import Link from 'next/link';
 import apiClient from '@/lib/api';
+import { useToast } from '@/contexts/ToastContext';
 
 interface Application {
   _id: string;
@@ -17,6 +18,7 @@ interface Application {
 }
 
 export default function EmployerApplications() {
+  const toast = useToast();
   const breadcrumbs = [
     { label: 'Dashboard', href: '/dashboard/employer' },
     { label: 'Applications' }
@@ -72,8 +74,10 @@ export default function EmployerApplications() {
       await apiClient.patch(`/api/applications/${appId}/status`, { status: newStatus });
       setApplications(prev => prev.map(a => a._id === appId ? { ...a, status: newStatus } : a));
       fetchApplications(statusFilter);
+      toast.success(newStatus === 'hired' ? 'Application accepted!' : newStatus === 'rejected' ? 'Application rejected' : 'Status updated');
     } catch (err) {
       console.error('Status update error:', err);
+      toast.error('Failed to update status');
     }
   };
 

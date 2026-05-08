@@ -20,3 +20,15 @@ export { default as Rating } from './Rating';
 export { default as Avatar } from './Avatar';
 export { default as Pagination } from './Pagination';
 export { default as Alert } from './Alert';
+
+// Skeletons
+export {
+  Skeleton,
+  JobCardSkeleton,
+  WorkerCardSkeleton,
+  ApplicationCardSkeleton,
+  StatsCardSkeleton,
+  ProfileSkeleton,
+  MessageListSkeleton,
+  DashboardSkeleton,
+} from './Skeleton';

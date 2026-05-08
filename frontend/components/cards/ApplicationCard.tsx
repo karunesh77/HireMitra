@@ -7,10 +7,7 @@ interface ApplicationCardProps {
   jobTitle: string;
   companyName?: string;
   location: string;
-  salary: {
-    min: number;
-    max: number;
-  };
+  salary: { min: number; max: number };
   status: ApplicationStatus;
   appliedAt: string;
   message?: string;
@@ -18,69 +15,50 @@ interface ApplicationCardProps {
 }
 
 export default function ApplicationCard({
-  id,
-  jobTitle,
-  companyName,
-  location,
-  salary,
-  status,
-  appliedAt,
-  message,
-  onClick
+  id, jobTitle, companyName, location, salary, status, appliedAt, message, onClick
 }: ApplicationCardProps) {
-  const getStatusColor = (status: ApplicationStatus) => {
-    switch (status) {
-      case 'accepted':
-        return 'bg-green-100 text-green-700 border-green-200';
-      case 'rejected':
-        return 'bg-red-100 text-red-700 border-red-200';
-      case 'pending':
-        return 'bg-yellow-100 text-yellow-700 border-yellow-200';
-      default:
-        return 'bg-gray-100 text-[#4A4A4A] border-[#E5E7EB]';
-    }
+  const statusConfig = {
+    accepted: { bg: 'bg-emerald-50', text: 'text-emerald-700', border: 'border-emerald-200', dot: 'bg-emerald-500', label: 'Accepted' },
+    rejected: { bg: 'bg-red-50', text: 'text-red-600', border: 'border-red-200', dot: 'bg-red-500', label: 'Rejected' },
+    pending: { bg: 'bg-amber-50', text: 'text-amber-700', border: 'border-amber-200', dot: 'bg-amber-500', label: 'Pending' },
   };
 
-  const getStatusLabel = (status: ApplicationStatus) => {
-    return status.charAt(0).toUpperCase() + status.slice(1);
+  const s = statusConfig[status] || statusConfig.pending;
+
+  const timeAgo = (date: string) => {
+    const diff = Date.now() - new Date(date).getTime();
+    const days = Math.floor(diff / 86400000);
+    if (days === 0) return 'Today';
+    if (days === 1) return 'Yesterday';
+    if (days < 7) return `${days}d ago`;
+    return new Date(date).toLocaleDateString();
   };
 
   return (
-    <Card hoverable onClick={onClick}>
-      {/* Header */}
-      <div className="flex justify-between items-start mb-4">
-        <div className="flex-1">
-          <h3 className="text-xl font-bold text-[#001F3F] mb-2">{jobTitle}</h3>
-          <p className="text-[#4A4A4A] mb-2">
-            {companyName && (
-              <>
-                <span className="font-medium">{companyName}</span>
-                {' • '}
-              </>
-            )}
+    <Card hoverable onClick={onClick} className="group">
+      <div className="flex justify-between items-start mb-3">
+        <div className="flex-1 min-w-0">
+          <h3 className="text-lg font-bold text-[#001F3F] group-hover:text-[#FF7A00] transition-colors line-clamp-1">{jobTitle}</h3>
+          <p className="text-sm text-[#6B7280] mt-1">
+            {companyName && <><span className="font-medium text-[#4A4A4A]">{companyName}</span> &middot; </>}
             {location}
           </p>
         </div>
-        <span className={`px-3 py-1 rounded-full text-sm font-medium border ${getStatusColor(status)}`}>
-          {getStatusLabel(status)}
+        <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-semibold border ${s.bg} ${s.text} ${s.border} ml-3 flex-shrink-0`}>
+          <span className={`w-1.5 h-1.5 rounded-full ${s.dot}`}></span>
+          {s.label}
         </span>
       </div>
 
-      {/* Salary & Date */}
-      <div className="flex justify-between items-center mb-4 pb-4 border-b border-[#E5E7EB]">
-        <div className="text-orange-600 font-bold">
-          ₹{salary.min} - ₹{salary.max}
-        </div>
-        <p className="text-sm text-[#4A4A4A]">
-          Applied on {new Date(appliedAt).toLocaleDateString()}
-        </p>
+      <div className="flex justify-between items-center pt-3 border-t border-[#F3F4F6]">
+        <span className="text-[#FF7A00] font-bold">&#8377;{salary.min.toLocaleString()} - &#8377;{salary.max.toLocaleString()}</span>
+        <span className="text-xs text-[#9CA3AF]">Applied {timeAgo(appliedAt)}</span>
       </div>
 
-      {/* Message */}
       {message && (
-        <div className="p-3 bg-[#FFF4E5] rounded-lg border border-[#E5E7EB]">
-          <p className="text-sm text-[#4A4A4A]">
-            <span className="font-medium">Your Message:</span> {message}
+        <div className="mt-3 p-3 bg-[#FAFAFA] rounded-xl">
+          <p className="text-xs text-[#6B7280] line-clamp-2">
+            <span className="font-semibold text-[#4A4A4A]">Your note:</span> {message}
           </p>
         </div>
       )}

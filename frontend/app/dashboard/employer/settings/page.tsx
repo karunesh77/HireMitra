@@ -4,8 +4,10 @@ import { useState, useEffect } from 'react';
 import { Navbar, Input, Button, LoadingSpinner } from '@/components';
 import { Breadcrumbs } from '@/components';
 import apiClient from '@/lib/api';
+import { useToast } from '@/contexts/ToastContext';
 
 export default function EmployerSettingsPage() {
+  const toast = useToast();
   const [profile, setProfile] = useState({ email: '', phone: '', companyName: '', website: '', companyDescription: '', location: '', industry: '' });
   const [passwords, setPasswords] = useState({ currentPassword: '', newPassword: '', confirmPassword: '' });
   const [notifications, setNotifications] = useState({
@@ -59,8 +61,8 @@ export default function EmployerSettingsPage() {
   }, []);
 
   const showMessage = (type: 'success' | 'error', text: string) => {
-    setMessage({ type, text });
-    setTimeout(() => setMessage(null), 4000);
+    if (type === 'success') toast.success(text);
+    else toast.error(text);
   };
 
   const handleSaveProfile = async () => {

@@ -4,12 +4,16 @@ import { useState, useEffect } from 'react';
 import { Navbar, Input, Button, LoadingSpinner } from '@/components';
 import { Breadcrumbs } from '@/components';
 import apiClient from '@/lib/api';
+import { useToast } from '@/contexts/ToastContext';
 
 export default function EmployerProfile() {
+  const toast = useToast();
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
+  const [isUploading, setIsUploading] = useState(false);
   const [success, setSuccess] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [profileImage, setProfileImage] = useState<string | null>(null);
 
   const [formData, setFormData] = useState({
     name: '',
@@ -32,6 +36,7 @@ export default function EmployerProfile() {
         setIsLoading(true);
         const response = await apiClient.get('/api/profile');
         const data = response.data.user || response.data;
+        setProfileImage(data.profileImage || null);
         setFormData({
           name: data.name || '',
           email: data.email || '',
@@ -50,6 +55,30 @@ export default function EmployerProfile() {
     fetchProfile();
   }, []);
 
+  const handlePhotoUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    if (file.size > 5 * 1024 * 1024) {
+      setError('Photo must be less than 5MB');
+      return;
+    }
+    try {
+      setIsUploading(true);
+      setError(null);
+      const fd = new FormData();
+      fd.append('photo', file);
+      const response = await apiClient.post('/api/profile/photo', fd, {
+        headers: { 'Content-Type': 'multipart/form-data' }
+      });
+      setProfileImage(response.data.photoUrl);
+      toast.success('Photo updated!');
+    } catch (err: any) {
+      toast.error(err.response?.data?.error || 'Failed to upload photo');
+    } finally {
+      setIsUploading(false);
+    }
+  };
+
   const handleChange = (field: string, value: string) => {
     setFormData(prev => ({ ...prev, [field]: value }));
   };
@@ -61,10 +90,9 @@ export default function EmployerProfile() {
     try {
       setIsSaving(true);
       await apiClient.patch('/api/profile', formData);
-      setSuccess(true);
-      setTimeout(() => setSuccess(false), 3000);
+      toast.success('Profile updated successfully!');
     } catch (err: any) {
-      setError(err.response?.data?.message || 'Failed to update profile');
+      toast.error(err.response?.data?.message || 'Failed to update profile');
     } finally {
       setIsSaving(false);
     }
@@ -98,6 +126,28 @@ export default function EmployerProfile() {
                   <p className="text-red-600">{error}</p>
                 </div>
               )}
+
+              {/* Profile Photo */}
+              <div className="p-8 bg-white rounded-xl border border-[#E5E7EB]">
+                <div className="flex flex-col sm:flex-row items-center gap-6">
+                  <div className="relative flex-shrink-0">
+                    {profileImage ? (
+                      <img src={profileImage} alt="Profile" className="w-28 h-28 rounded-full object-cover border-4 border-[#FFF4E5]" />
+                    ) : (
+                      <div className="w-28 h-28 rounded-full bg-[#FFF4E5] flex items-center justify-center text-4xl">🏢</div>
+                    )}
+                    <label className="absolute bottom-0 right-0 w-9 h-9 bg-[#FF7A00] rounded-full flex items-center justify-center cursor-pointer hover:bg-[#e56e00] transition shadow-lg">
+                      <span className="text-white text-sm">{isUploading ? '⏳' : '📷'}</span>
+                      <input type="file" accept="image/jpeg,image/png,image/gif,image/webp" onChange={handlePhotoUpload} className="hidden" disabled={isUploading} />
+                    </label>
+                  </div>
+                  <div className="text-center sm:text-left">
+                    <h3 className="text-xl font-bold text-[#001F3F]">{formData.name || 'Your Name'}</h3>
+                    <p className="text-[#4A4A4A] text-sm">{formData.companyName || 'Company Name'}</p>
+                    <p className="text-xs text-[#4A4A4A] mt-2">Click 📷 to change photo (max 5MB)</p>
+                  </div>
+                </div>
+              </div>
 
               {/* Personal Info */}
               <div className="p-8 bg-white rounded-xl border border-[#E5E7EB]">

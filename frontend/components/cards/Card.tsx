@@ -12,8 +12,8 @@ export default function Card({ children, className = '', hoverable = false, onCl
     <div
       onClick={onClick}
       className={`
-        p-6 rounded-xl bg-white border border-[#E5E7EB]
-        ${hoverable ? 'hover:border-[#FF7A00] hover:shadow-lg cursor-pointer transition' : ''}
+        p-6 rounded-2xl bg-white border border-[#E5E7EB] shadow-sm
+        ${hoverable ? 'hover:border-[#FF7A00]/40 hover:shadow-md hover:-translate-y-0.5 cursor-pointer transition-all duration-300' : ''}
         ${className}
       `}
     >

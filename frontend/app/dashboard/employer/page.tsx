@@ -1,9 +1,10 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { Navbar, Button, LoadingSpinner } from '@/components';
+import { Navbar, Button, DashboardSkeleton } from '@/components';
 import Link from 'next/link';
 import apiClient from '@/lib/api';
+import { useAuth } from '@/hooks/useAuth';
 
 interface Job {
   _id: string;
@@ -30,6 +31,7 @@ interface Stats {
 }
 
 export default function EmployerDashboard() {
+  const { user } = useAuth();
   const [stats, setStats] = useState<Stats>({ activeJobs: 0, totalApplications: 0, hired: 0 });
   const [recentJobs, setRecentJobs] = useState<Job[]>([]);
   const [recentApplications, setRecentApplications] = useState<Application[]>([]);
@@ -39,8 +41,6 @@ export default function EmployerDashboard() {
     const fetchDashboardData = async () => {
       try {
         setIsLoading(true);
-
-        // Fetch all data in parallel
         const [jobsRes, applicationsRes, hiredRes] = await Promise.all([
           apiClient.get('/api/jobs/employer/me?limit=3'),
           apiClient.get('/api/applications/employer/me?limit=4'),
@@ -64,188 +64,185 @@ export default function EmployerDashboard() {
         setIsLoading(false);
       }
     };
-
     fetchDashboardData();
   }, []);
 
-  const getStatusColor = (status: string) => {
-    switch (status) {
-      case 'pending': return 'bg-yellow-100 text-yellow-700';
-      case 'hired': return 'bg-green-100 text-green-700';
-      case 'rejected': return 'bg-red-100 text-red-700';
-      default: return 'bg-gray-100 text-gray-700';
-    }
+  const getStatusConfig = (status: string) => {
+    const configs: Record<string, { bg: string; text: string; dot: string }> = {
+      pending: { bg: 'bg-amber-50', text: 'text-amber-700', dot: 'bg-amber-500' },
+      hired: { bg: 'bg-emerald-50', text: 'text-emerald-700', dot: 'bg-emerald-500' },
+      rejected: { bg: 'bg-red-50', text: 'text-red-600', dot: 'bg-red-500' },
+    };
+    return configs[status] || { bg: 'bg-gray-50', text: 'text-gray-700', dot: 'bg-gray-500' };
   };
 
   const handleApplicationAction = async (applicationId: string, status: 'hired' | 'rejected') => {
     try {
       await apiClient.patch(`/api/applications/${applicationId}/status`, { status });
-      setRecentApplications(prev =>
-        prev.map(app => app._id === applicationId ? { ...app, status } : app)
-      );
-      if (status === 'hired') {
-        setStats(prev => ({ ...prev, hired: prev.hired + 1 }));
-      }
+      setRecentApplications(prev => prev.map(app => app._id === applicationId ? { ...app, status } : app));
+      if (status === 'hired') setStats(prev => ({ ...prev, hired: prev.hired + 1 }));
     } catch (err) {
       console.error('Action failed:', err);
     }
   };
 
+  const timeAgo = (date: string) => {
+    const days = Math.floor((Date.now() - new Date(date).getTime()) / 86400000);
+    if (days === 0) return 'Today';
+    if (days === 1) return 'Yesterday';
+    if (days < 7) return `${days}d ago`;
+    return new Date(date).toLocaleDateString();
+  };
+
+  const statCards = [
+    { label: 'Active Jobs', value: stats.activeJobs, icon: '💼', gradient: 'from-[#FFF4E5] to-white', color: 'text-[#FF7A00]', link: '/dashboard/employer/jobs' },
+    { label: 'Total Applications', value: stats.totalApplications, icon: '📋', gradient: 'from-blue-50 to-white', color: 'text-blue-600', link: '/dashboard/employer/applications' },
+    { label: 'Workers Hired', value: stats.hired, icon: '✅', gradient: 'from-emerald-50 to-white', color: 'text-emerald-600', link: '/dashboard/employer/applications' },
+  ];
+
+  const quickActions = [
+    { label: 'Post New Job', desc: 'Create a new job posting', icon: '➕', href: '/dashboard/employer/jobs/create' },
+    { label: 'Applications', desc: 'Review job applications', icon: '📋', href: '/dashboard/employer/applications' },
+    { label: 'Browse Workers', desc: 'Find talented workers', icon: '👥', href: '/dashboard/employer/workers' },
+  ];
+
   return (
-    <div className="min-h-screen bg-white">
+    <div className="min-h-screen bg-[#FAFAFA]">
       <Navbar />
 
-      <div className="pt-20 px-4 sm:px-6 lg:px-8">
+      <div className="pt-20 pb-12 px-4 sm:px-6 lg:px-8">
         <div className="max-w-6xl mx-auto">
-
           {/* Header */}
-          <div className="flex justify-between items-start mb-12">
+          <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-4 mb-8 animate-fade-in">
             <div>
-              <h1 className="text-4xl font-bold text-[#001F3F] mb-3">Welcome Back! 🏢</h1>
-              <p className="text-[#4A4A4A] text-lg">Manage your job postings and find the perfect workers</p>
+              <h1 className="text-2xl sm:text-3xl font-bold text-[#001F3F] mb-1">Welcome back{user?.firstName ? `, ${user.firstName}` : ''}! 🏢</h1>
+              <p className="text-[#6B7280]">Manage your job postings and find the perfect workers</p>
             </div>
             <Link href="/dashboard/employer/jobs/create">
-              <Button size="lg">+ Post New Job</Button>
+              <Button className="shadow-lg shadow-[#FF7A00]/20">
+                <span>+</span> Post New Job
+              </Button>
             </Link>
           </div>
 
           {isLoading ? (
-            <div className="flex justify-center py-20"><LoadingSpinner /></div>
+            <DashboardSkeleton />
           ) : (
             <>
-              {/* Stats Grid */}
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-12">
-                <div className="p-6 rounded-xl bg-gradient-to-br from-[#FFF4E5] to-white border border-[#E5E7EB]">
-                  <div className="text-3xl mb-2">💼</div>
-                  <p className="text-[#4A4A4A] text-sm">Active Jobs</p>
-                  <p className="text-3xl font-bold text-[#FF7A00] mt-2">{stats.activeJobs}</p>
-                </div>
-                <div className="p-6 rounded-xl bg-gradient-to-br from-blue-50 to-white border border-[#E5E7EB]">
-                  <div className="text-3xl mb-2">📋</div>
-                  <p className="text-[#4A4A4A] text-sm">Total Applications</p>
-                  <p className="text-3xl font-bold text-blue-600 mt-2">{stats.totalApplications}</p>
-                </div>
-                <div className="p-6 rounded-xl bg-gradient-to-br from-green-50 to-white border border-[#E5E7EB]">
-                  <div className="text-3xl mb-2">✅</div>
-                  <p className="text-[#4A4A4A] text-sm">Hired</p>
-                  <p className="text-3xl font-bold text-green-600 mt-2">{stats.hired}</p>
-                </div>
+              {/* Stats */}
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-8">
+                {statCards.map((card, i) => (
+                  <Link key={card.label} href={card.link}>
+                    <div className={`p-5 rounded-2xl bg-gradient-to-br ${card.gradient} border border-[#E5E7EB] hover:shadow-md hover:-translate-y-0.5 transition-all duration-300 cursor-pointer animate-fade-in`} style={{ animationDelay: `${i * 100}ms` }}>
+                      <div className="flex items-center justify-between mb-3">
+                        <p className="text-[#6B7280] text-xs font-medium uppercase tracking-wide">{card.label}</p>
+                        <span className="text-2xl">{card.icon}</span>
+                      </div>
+                      <p className={`text-2xl sm:text-3xl font-bold ${card.color}`}>{card.value}</p>
+                    </div>
+                  </Link>
+                ))}
               </div>
 
               {/* Quick Actions */}
-              <div className="mb-12">
-                <h2 className="text-2xl font-bold text-[#001F3F] mb-6">Quick Actions</h2>
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                  <Link href="/dashboard/employer/jobs/create">
-                    <div className="p-8 rounded-xl bg-white border border-[#E5E7EB] hover:border-[#FF7A00] hover:shadow-lg transition cursor-pointer text-center">
-                      <div className="text-4xl mb-3">➕</div>
-                      <h3 className="text-lg font-bold text-[#001F3F] mb-2">Post New Job</h3>
-                      <p className="text-sm text-[#4A4A4A]">Create a new job posting</p>
-                    </div>
-                  </Link>
-                  <Link href="/dashboard/employer/applications">
-                    <div className="p-8 rounded-xl bg-white border border-[#E5E7EB] hover:border-[#FF7A00] hover:shadow-lg transition cursor-pointer text-center">
-                      <div className="text-4xl mb-3">📋</div>
-                      <h3 className="text-lg font-bold text-[#001F3F] mb-2">Applications</h3>
-                      <p className="text-sm text-[#4A4A4A]">Review job applications</p>
-                    </div>
-                  </Link>
-                  <Link href="/dashboard/employer/workers">
-                    <div className="p-8 rounded-xl bg-white border border-[#E5E7EB] hover:border-[#FF7A00] hover:shadow-lg transition cursor-pointer text-center">
-                      <div className="text-4xl mb-3">👥</div>
-                      <h3 className="text-lg font-bold text-[#001F3F] mb-2">Browse Workers</h3>
-                      <p className="text-sm text-[#4A4A4A]">Find talented workers</p>
-                    </div>
-                  </Link>
-                </div>
-              </div>
-
-              {/* Active Jobs */}
-              <div className="mb-12">
-                <div className="flex justify-between items-center mb-6">
-                  <h2 className="text-2xl font-bold text-[#001F3F]">Active Job Postings</h2>
-                  <Link href="/dashboard/employer/jobs">
-                    <Button variant="ghost" size="sm">View All →</Button>
-                  </Link>
-                </div>
-
-                {recentJobs.length === 0 ? (
-                  <div className="p-8 text-center border border-[#E5E7EB] rounded-xl">
-                    <p className="text-[#4A4A4A]">No jobs posted yet.</p>
-                    <Link href="/dashboard/employer/jobs/create">
-                      <Button className="mt-4">Post Your First Job</Button>
+              <div className="mb-8">
+                <h2 className="text-lg font-bold text-[#001F3F] mb-4">Quick Actions</h2>
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                  {quickActions.map((action) => (
+                    <Link key={action.label} href={action.href}>
+                      <div className="p-5 rounded-2xl bg-white border border-[#E5E7EB] hover:border-[#FF7A00]/40 hover:shadow-md hover:-translate-y-0.5 transition-all duration-300 cursor-pointer group">
+                        <div className="w-11 h-11 rounded-xl bg-[#FFF4E5] flex items-center justify-center text-xl mb-3 group-hover:scale-110 transition-transform">{action.icon}</div>
+                        <h3 className="font-bold text-[#001F3F] group-hover:text-[#FF7A00] transition-colors mb-1">{action.label}</h3>
+                        <p className="text-xs text-[#6B7280]">{action.desc}</p>
+                      </div>
                     </Link>
-                  </div>
-                ) : (
-                  <div className="space-y-4">
-                    {recentJobs.map((job) => (
-                      <div key={job._id} className="p-6 rounded-xl bg-white border border-[#E5E7EB] hover:border-[#FF7A00] transition">
-                        <div className="flex justify-between items-start">
-                          <div className="flex-1">
-                            <h3 className="text-lg font-bold text-[#001F3F]">{job.title}</h3>
-                            <p className="text-[#4A4A4A] text-sm mt-1">{job.location} • {job.jobType}</p>
-                          </div>
-                          <div className="flex gap-2">
-                            <span className="text-xs bg-green-100 text-green-700 px-3 py-1 rounded-full font-medium">Open</span>
-                            <span className="text-xs bg-[#FFF4E5] text-[#FF7A00] px-3 py-1 rounded-full font-medium">
-                              {job.applicationsCount || 0} applications
-                            </span>
-                          </div>
-                        </div>
-                        <div className="flex gap-3 mt-4">
-                          <Link href={`/dashboard/employer/jobs/${job._id}/edit`}>
-                            <Button variant="secondary" size="sm">Edit</Button>
-                          </Link>
-                          <Link href={`/dashboard/employer/jobs/${job._id}/applications`}>
-                            <Button variant="secondary" size="sm">View Applications</Button>
-                          </Link>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                )}
+                  ))}
+                </div>
               </div>
 
-              {/* Recent Applications */}
-              <div>
-                <div className="flex justify-between items-center mb-6">
-                  <h2 className="text-2xl font-bold text-[#001F3F]">Recent Applications</h2>
-                  <Link href="/dashboard/employer/applications">
-                    <Button variant="ghost" size="sm">View All →</Button>
-                  </Link>
+              {/* Two Column */}
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                {/* Active Jobs */}
+                <div className="bg-white rounded-2xl border border-[#E5E7EB] p-6">
+                  <div className="flex justify-between items-center mb-5">
+                    <h2 className="font-bold text-[#001F3F]">Active Job Postings</h2>
+                    <Link href="/dashboard/employer/jobs"><span className="text-xs text-[#FF7A00] font-semibold hover:underline">View All</span></Link>
+                  </div>
+
+                  {recentJobs.length === 0 ? (
+                    <div className="text-center py-8">
+                      <div className="text-4xl mb-3">💼</div>
+                      <p className="text-[#6B7280] text-sm mb-3">No jobs posted yet</p>
+                      <Link href="/dashboard/employer/jobs/create"><Button size="sm">Post Your First Job</Button></Link>
+                    </div>
+                  ) : (
+                    <div className="space-y-3">
+                      {recentJobs.map((job) => (
+                        <div key={job._id} className="p-3.5 rounded-xl bg-[#FAFAFA] hover:bg-[#FFF4E5]/50 transition-colors">
+                          <div className="flex items-center justify-between mb-2">
+                            <h4 className="font-semibold text-sm text-[#001F3F] truncate flex-1">{job.title}</h4>
+                            <span className="text-[10px] bg-[#FFF4E5] text-[#FF7A00] px-2 py-0.5 rounded-lg font-semibold ml-2">{job.applicationsCount || 0} apps</span>
+                          </div>
+                          <p className="text-xs text-[#9CA3AF] mb-2">{job.location} &middot; {job.jobType}</p>
+                          <div className="flex gap-2">
+                            <Link href={`/dashboard/employer/jobs/${job._id}/edit`}>
+                              <button className="text-xs text-[#FF7A00] font-medium hover:underline">Edit</button>
+                            </Link>
+                            <span className="text-[#E5E7EB]">|</span>
+                            <Link href={`/dashboard/employer/jobs/${job._id}/applications`}>
+                              <button className="text-xs text-[#FF7A00] font-medium hover:underline">View Apps</button>
+                            </Link>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
                 </div>
 
-                {recentApplications.length === 0 ? (
-                  <div className="p-8 text-center border border-[#E5E7EB] rounded-xl">
-                    <p className="text-[#4A4A4A]">No applications yet.</p>
+                {/* Recent Applications */}
+                <div className="bg-white rounded-2xl border border-[#E5E7EB] p-6">
+                  <div className="flex justify-between items-center mb-5">
+                    <h2 className="font-bold text-[#001F3F]">Recent Applications</h2>
+                    <Link href="/dashboard/employer/applications"><span className="text-xs text-[#FF7A00] font-semibold hover:underline">View All</span></Link>
                   </div>
-                ) : (
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                    {recentApplications.map((app) => (
-                      <div key={app._id} className="p-6 rounded-xl bg-white border border-[#E5E7EB] hover:shadow-lg transition">
-                        <div className="flex gap-4">
-                          <div className="w-12 h-12 rounded-full bg-[#FFF4E5] flex items-center justify-center text-lg flex-shrink-0">👤</div>
-                          <div className="flex-1">
-                            <h4 className="font-bold text-[#001F3F]">{app.workerId?.name || 'Worker'}</h4>
-                            <p className="text-sm text-[#4A4A4A]">Applied for: {app.jobId?.title || 'Job'}</p>
-                            <p className="text-xs text-[#4A4A4A] mt-1">
-                              {new Date(app.createdAt).toLocaleDateString()}
-                            </p>
+
+                  {recentApplications.length === 0 ? (
+                    <div className="text-center py-8">
+                      <div className="text-4xl mb-3">📋</div>
+                      <p className="text-[#6B7280] text-sm">No applications yet</p>
+                    </div>
+                  ) : (
+                    <div className="space-y-3">
+                      {recentApplications.map((app) => {
+                        const sc = getStatusConfig(app.status);
+                        return (
+                          <div key={app._id} className="p-3.5 rounded-xl bg-[#FAFAFA] hover:bg-[#FFF4E5]/50 transition-colors">
+                            <div className="flex items-center gap-3">
+                              <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-[#FFF4E5] to-[#FFE8CC] flex items-center justify-center text-sm font-bold text-[#FF7A00] flex-shrink-0">
+                                {(app.workerId?.name || 'W').charAt(0).toUpperCase()}
+                              </div>
+                              <div className="flex-1 min-w-0">
+                                <h4 className="font-semibold text-sm text-[#001F3F] truncate">{app.workerId?.name || 'Worker'}</h4>
+                                <p className="text-xs text-[#9CA3AF] truncate">For: {app.jobId?.title || 'Job'} &middot; {timeAgo(app.createdAt)}</p>
+                              </div>
+                              <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-lg text-[10px] font-semibold ${sc.bg} ${sc.text} flex-shrink-0`}>
+                                <span className={`w-1.5 h-1.5 rounded-full ${sc.dot}`}></span>
+                                <span className="capitalize">{app.status}</span>
+                              </span>
+                            </div>
+                            {app.status === 'pending' && (
+                              <div className="flex gap-2 mt-2.5 ml-12">
+                                <button onClick={() => handleApplicationAction(app._id, 'hired')} className="text-xs text-emerald-600 font-semibold hover:underline">Accept</button>
+                                <span className="text-[#E5E7EB]">|</span>
+                                <button onClick={() => handleApplicationAction(app._id, 'rejected')} className="text-xs text-red-500 font-semibold hover:underline">Reject</button>
+                              </div>
+                            )}
                           </div>
-                          <span className={`text-xs px-2 py-1 rounded-full font-medium h-fit ${getStatusColor(app.status)}`}>
-                            {app.status}
-                          </span>
-                        </div>
-                        {app.status === 'pending' && (
-                          <div className="flex gap-2 mt-4">
-                            <Button variant="primary" size="sm" onClick={() => handleApplicationAction(app._id, 'hired')}>Accept</Button>
-                            <Button variant="danger" size="sm" onClick={() => handleApplicationAction(app._id, 'rejected')}>Reject</Button>
-                          </div>
-                        )}
-                      </div>
-                    ))}
-                  </div>
-                )}
+                        );
+                      })}
+                    </div>
+                  )}
+                </div>
               </div>
             </>
           )}

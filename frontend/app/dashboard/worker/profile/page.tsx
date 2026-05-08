@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react';
 import { Navbar, Input, TextArea, Button, Breadcrumbs, LoadingSpinner, Card } from '@/components';
 import apiClient from '@/lib/api';
+import { useToast } from '@/contexts/ToastContext';
 
 interface UserProfile {
   _id: string;
@@ -23,6 +24,7 @@ interface UserProfile {
 }
 
 export default function WorkerProfile() {
+  const toast = useToast();
   const breadcrumbs = [
     { label: 'Dashboard', href: '/dashboard/worker' },
     { label: 'Profile' }
@@ -42,6 +44,7 @@ export default function WorkerProfile() {
   });
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
+  const [isUploading, setIsUploading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState(false);
 
@@ -87,6 +90,37 @@ export default function WorkerProfile() {
     fetchProfile();
   }, []);
 
+  const handlePhotoUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    // Validate file size (5MB max)
+    if (file.size > 5 * 1024 * 1024) {
+      setError('Photo must be less than 5MB');
+      return;
+    }
+
+    try {
+      setIsUploading(true);
+      setError(null);
+
+      const formData = new FormData();
+      formData.append('photo', file);
+
+      const response = await apiClient.post('/api/profile/photo', formData, {
+        headers: { 'Content-Type': 'multipart/form-data' }
+      });
+
+      // Update profile with new photo URL
+      setProfile(prev => prev ? { ...prev, profileImage: response.data.photoUrl } : prev);
+      toast.success('Profile photo updated!');
+    } catch (err: any) {
+      toast.error(err.response?.data?.error || 'Failed to upload photo');
+    } finally {
+      setIsUploading(false);
+    }
+  };
+
   const handleChange = (
     e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>
   ) => {
@@ -122,14 +156,9 @@ export default function WorkerProfile() {
       };
 
       await apiClient.patch('/api/profile', updateData);
-      setSuccess(true);
-
-      setTimeout(() => {
-        setSuccess(false);
-      }, 3000);
+      toast.success('Profile updated successfully!');
     } catch (err: any) {
-      const errorMessage = err.response?.data?.message || 'Failed to save profile';
-      setError(errorMessage);
+      toast.error(err.response?.data?.message || 'Failed to save profile');
     } finally {
       setIsSaving(false);
     }
@@ -189,13 +218,37 @@ export default function WorkerProfile() {
 
           {/* Profile Overview */}
           <div className="p-8 rounded-xl bg-white border border-[#E5E7EB] mb-8">
-            <div className="flex items-start gap-8">
-              <div className="w-32 h-32 rounded-full bg-[#FFF4E5] flex items-center justify-center text-5xl flex-shrink-0">
-                {profile?.profileImage ? '📷' : '👤'}
+            <div className="flex flex-col sm:flex-row items-center sm:items-start gap-6 sm:gap-8">
+              {/* Profile Photo with Upload */}
+              <div className="relative flex-shrink-0">
+                {profile?.profileImage ? (
+                  <img
+                    src={profile.profileImage}
+                    alt={profile.name}
+                    className="w-32 h-32 rounded-full object-cover border-4 border-[#FFF4E5]"
+                  />
+                ) : (
+                  <div className="w-32 h-32 rounded-full bg-[#FFF4E5] flex items-center justify-center text-5xl">
+                    👤
+                  </div>
+                )}
+                <label
+                  className="absolute bottom-0 right-0 w-10 h-10 bg-[#FF7A00] rounded-full flex items-center justify-center cursor-pointer hover:bg-[#e56e00] transition shadow-lg"
+                  title="Upload photo"
+                >
+                  <span className="text-white text-lg">{isUploading ? '⏳' : '📷'}</span>
+                  <input
+                    type="file"
+                    accept="image/jpeg,image/png,image/gif,image/webp"
+                    onChange={handlePhotoUpload}
+                    className="hidden"
+                    disabled={isUploading}
+                  />
+                </label>
               </div>
-              <div className="flex-1">
-                <h2 className="text-3xl font-bold text-[#001F3F] mb-2">{profile?.name}</h2>
-                <div className="flex items-center gap-4 mb-4">
+              <div className="flex-1 text-center sm:text-left">
+                <h2 className="text-2xl sm:text-3xl font-bold text-[#001F3F] mb-2">{profile?.name}</h2>
+                <div className="flex items-center justify-center sm:justify-start gap-4 mb-4">
                   <div className="text-xl">{ratingStars}</div>
                   <p className="text-[#4A4A4A]">
                     {(profile?.rating || 0).toFixed(1)} rating ({profile?.totalReviews || 0} reviews)
@@ -204,6 +257,7 @@ export default function WorkerProfile() {
                 <p className="text-[#4A4A4A] mt-3">
                   {profile?.location || 'Location not set'} • Member since {memberSince}
                 </p>
+                <p className="text-xs text-[#4A4A4A] mt-2">Click 📷 to change profile photo (max 5MB)</p>
               </div>
             </div>
           </div>

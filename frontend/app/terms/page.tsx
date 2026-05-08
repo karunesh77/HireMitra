@@ -1,5 +1,11 @@
+import type { Metadata } from 'next';
 import { Navbar } from '@/components';
 import Link from 'next/link';
+
+export const metadata: Metadata = {
+  title: 'Terms & Conditions - HireMitra',
+  description: 'Read the terms and conditions for using the HireMitra platform.',
+};
 
 export default function TermsPage() {
   return (

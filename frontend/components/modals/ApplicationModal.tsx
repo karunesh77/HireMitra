@@ -3,6 +3,7 @@
 import { useState } from 'react';
 import { Input, TextArea, Select, Button } from '@/components';
 import apiClient from '@/lib/api';
+import { useToast } from '@/contexts/ToastContext';
 
 interface ApplicationModalProps {
   jobId: string;
@@ -17,6 +18,7 @@ export default function ApplicationModal({
   onClose,
   onSuccess
 }: ApplicationModalProps) {
+  const toast = useToast();
   const [formData, setFormData] = useState({
     coverLetter: '',
     expectedSalary: '',
@@ -70,7 +72,7 @@ export default function ApplicationModal({
         preferredShift: formData.preferredShift
       });
 
-      setSuccess(true);
+      toast.success('Application submitted successfully!');
       setFormData({
         coverLetter: '',
         expectedSalary: '',
@@ -78,14 +80,13 @@ export default function ApplicationModal({
         preferredShift: 'flexible'
       });
 
-      // Auto close after 2 seconds
       setTimeout(() => {
         onClose();
         onSuccess?.();
-      }, 2000);
+      }, 1000);
     } catch (err: any) {
       const errorMessage = err.response?.data?.message || 'Failed to submit application';
-      setError(errorMessage);
+      toast.error(errorMessage);
     } finally {
       setIsLoading(false);
     }

@@ -18,25 +18,13 @@ interface InputProps {
 }
 
 export default function Input({
-  label,
-  type = 'text',
-  placeholder,
-  value,
-  onChange,
-  error,
-  disabled = false,
-  required = false,
-  className = '',
-  name,
-  id,
-  min,
-  max,
-  step,
+  label, type = 'text', placeholder, value, onChange, error,
+  disabled = false, required = false, className = '', name, id, min, max, step,
 }: InputProps) {
   return (
-    <div className="space-y-2">
+    <div className="space-y-1.5">
       {label && (
-        <label className="block text-sm font-medium text-[#001F3F]">
+        <label className="block text-sm font-semibold text-[#001F3F]">
           {label}
           {required && <span className="text-red-500 ml-1">*</span>}
         </label>
@@ -53,18 +41,21 @@ export default function Input({
         max={max}
         step={step}
         className={`
-          w-full px-4 py-3 rounded-lg bg-white
+          w-full px-4 py-2.5 rounded-xl bg-white
           border border-[#E5E7EB]
-          text-[#001F3F] placeholder-[#4A4A4A]
-          focus:outline-none focus:ring-2 focus:ring-[#FF7A00] focus:border-transparent
-          disabled:bg-gray-100 disabled:cursor-not-allowed
-          transition
-          ${error ? 'border-red-500 focus:ring-red-500' : ''}
+          text-[#001F3F] placeholder-[#9CA3AF]
+          focus:outline-none focus:ring-2 focus:ring-[#FF7A00]/30 focus:border-[#FF7A00]
+          disabled:bg-gray-50 disabled:cursor-not-allowed disabled:text-[#9CA3AF]
+          hover:border-[#d1d5db]
+          transition-all duration-200
+          ${error ? 'border-red-400 focus:ring-red-500/30 focus:border-red-500' : ''}
           ${className}
         `}
       />
       {error && (
-        <p className="text-sm text-red-500 mt-1">{error}</p>
+        <p className="text-xs text-red-500 mt-1 flex items-center gap-1">
+          <span>!</span> {error}
+        </p>
       )}
     </div>
   );

@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react';
 import { Navbar, Button, Breadcrumbs, LoadingSpinner, Card } from '@/components';
 import apiClient from '@/lib/api';
+import { useToast } from '@/contexts/ToastContext';
 import Link from 'next/link';
 
 interface Job {
@@ -20,6 +21,7 @@ interface Job {
 }
 
 export default function WorkerSavedJobsPage() {
+  const toast = useToast();
   const breadcrumbs = [
     { label: 'Dashboard', href: '/dashboard/worker' },
     { label: 'Saved Jobs' }
@@ -46,17 +48,24 @@ export default function WorkerSavedJobsPage() {
           return;
         }
 
-        // Fetch job details for each saved job
-        const jobsData: Job[] = [];
-        for (const jobId of saved) {
-          try {
-            const response = await apiClient.get(`/api/jobs/${jobId}`);
-            jobsData.push(response.data.job);
-          } catch (err) {
-            console.error(`Failed to fetch job ${jobId}`);
-          }
-        }
+        // Fetch all jobs in parallel
+        const results = await Promise.allSettled(
+          saved.map((id: string) => apiClient.get(`/api/jobs/${id}`))
+        );
 
+        const jobsData: Job[] = [];
+        const validIds: string[] = [];
+
+        results.forEach((result, index) => {
+          if (result.status === 'fulfilled' && result.value.data.job) {
+            jobsData.push(result.value.data.job);
+            validIds.push(saved[index]);
+          }
+        });
+
+        // Clean up invalid IDs
+        localStorage.setItem('savedJobs', JSON.stringify(validIds));
+        setSavedJobIds(validIds);
         setSavedJobs(jobsData);
       } catch (err: any) {
         console.error('Error loading saved jobs:', err);
@@ -74,6 +83,7 @@ export default function WorkerSavedJobsPage() {
     localStorage.setItem('savedJobs', JSON.stringify(updated));
     setSavedJobIds(updated);
     setSavedJobs(savedJobs.filter((job) => job._id !== jobId));
+    toast.success('Job removed from saved');
   };
 
   if (isLoading) {
