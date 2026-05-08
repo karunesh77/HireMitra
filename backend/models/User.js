@@ -64,6 +64,14 @@ const userSchema = new mongoose.Schema({
   gstCertificate: String,
   businessRegistration: String,
 
+  // Notification preferences
+  notificationPreferences: {
+    emailNotifications: { type: Boolean, default: true },
+    messageAlerts: { type: Boolean, default: true },
+    applicationUpdates: { type: Boolean, default: true },
+    jobRecommendations: { type: Boolean, default: true },
+  },
+
   // Common fields
   rating: {
     type: Number,

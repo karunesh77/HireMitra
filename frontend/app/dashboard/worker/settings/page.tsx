@@ -1,273 +1,267 @@
 'use client';
 
-import { useState } from 'react';
-import { Sidebar, Input, TextArea, Button } from '@/components';
+import { useState, useEffect } from 'react';
+import { Navbar, Input, Button, LoadingSpinner } from '@/components';
+import { Breadcrumbs } from '@/components';
+import apiClient from '@/lib/api';
 
 export default function WorkerSettingsPage() {
-  const sidebarLinks = [
-    { href: '/dashboard/worker', label: 'Dashboard', icon: '📊' },
-    { href: '/dashboard/worker/jobs', label: 'Browse Jobs', icon: '💼' },
-    { href: '/dashboard/worker/applications', label: 'Applications', icon: '📋' },
-    { href: '/dashboard/worker/saved-jobs', label: 'Saved Jobs', icon: '⭐' },
-    { href: '/dashboard/worker/settings', label: 'Settings', icon: '⚙️' },
-  ];
-
-  const [settings, setSettings] = useState({
-    email: '',
-    phone: '',
-    currentPassword: '',
-    newPassword: '',
-    confirmPassword: '',
+  const [profile, setProfile] = useState({ email: '', phone: '' });
+  const [passwords, setPasswords] = useState({ currentPassword: '', newPassword: '', confirmPassword: '' });
+  const [notifications, setNotifications] = useState({
     emailNotifications: true,
+    messageAlerts: true,
+    applicationUpdates: true,
     jobRecommendations: true,
-    marketingUpdates: false,
-    smsNotifications: false,
-    profileVisibility: true,
-    showPhoneNumber: true,
   });
 
-  const [isLoading, setIsLoading] = useState(false);
+  const [isLoading, setIsLoading] = useState(true);
+  const [savingProfile, setSavingProfile] = useState(false);
+  const [savingPassword, setSavingPassword] = useState(false);
+  const [savingNotifications, setSavingNotifications] = useState(false);
+  const [message, setMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
 
-  const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const { name, value, type, checked } = e.target;
-    setSettings((prev) => ({
-      ...prev,
-      [name]: type === 'checkbox' ? checked : value,
-    }));
+  const breadcrumbs = [
+    { label: 'Dashboard', href: '/dashboard/worker' },
+    { label: 'Settings' },
+  ];
+
+  useEffect(() => {
+    const fetchSettings = async () => {
+      try {
+        setIsLoading(true);
+        const res = await apiClient.get('/api/profile');
+        const user = res.data.user || {};
+        setProfile({ email: user.email || '', phone: user.phone || '' });
+        if (user.notificationPreferences) {
+          setNotifications({
+            emailNotifications: user.notificationPreferences.emailNotifications ?? true,
+            messageAlerts: user.notificationPreferences.messageAlerts ?? true,
+            applicationUpdates: user.notificationPreferences.applicationUpdates ?? true,
+            jobRecommendations: user.notificationPreferences.jobRecommendations ?? true,
+          });
+        }
+      } catch (err) {
+        console.error('Fetch settings error:', err);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+    fetchSettings();
+  }, []);
+
+  const showMessage = (type: 'success' | 'error', text: string) => {
+    setMessage({ type, text });
+    setTimeout(() => setMessage(null), 4000);
   };
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setIsLoading(true);
-    // TODO: Add API call to save settings
-    console.log('Settings to save:', settings);
-    setIsLoading(false);
+  const handleSaveProfile = async () => {
+    setSavingProfile(true);
+    try {
+      await apiClient.patch('/api/profile', { phone: profile.phone });
+      showMessage('success', 'Profile updated successfully');
+    } catch (err: any) {
+      showMessage('error', err.response?.data?.error || 'Failed to update profile');
+    } finally {
+      setSavingProfile(false);
+    }
   };
+
+  const handleChangePassword = async () => {
+    if (!passwords.currentPassword || !passwords.newPassword) {
+      showMessage('error', 'Please fill all password fields');
+      return;
+    }
+    if (passwords.newPassword !== passwords.confirmPassword) {
+      showMessage('error', 'New passwords do not match');
+      return;
+    }
+    if (passwords.newPassword.length < 6) {
+      showMessage('error', 'Password must be at least 6 characters');
+      return;
+    }
+
+    setSavingPassword(true);
+    try {
+      await apiClient.patch('/api/auth/change-password', {
+        currentPassword: passwords.currentPassword,
+        newPassword: passwords.newPassword,
+      });
+      showMessage('success', 'Password changed successfully');
+      setPasswords({ currentPassword: '', newPassword: '', confirmPassword: '' });
+    } catch (err: any) {
+      showMessage('error', err.response?.data?.error || 'Failed to change password');
+    } finally {
+      setSavingPassword(false);
+    }
+  };
+
+  const handleSaveNotifications = async () => {
+    setSavingNotifications(true);
+    try {
+      await apiClient.patch('/api/profile', { notificationPreferences: notifications });
+      showMessage('success', 'Notification preferences saved');
+    } catch (err: any) {
+      showMessage('error', err.response?.data?.error || 'Failed to save preferences');
+    } finally {
+      setSavingNotifications(false);
+    }
+  };
+
+  const handleNotifChange = (key: string) => {
+    setNotifications(prev => ({ ...prev, [key]: !prev[key as keyof typeof prev] }));
+  };
+
+  if (isLoading) {
+    return (
+      <div className="min-h-screen bg-white">
+        <Navbar />
+        <div className="pt-20 flex justify-center items-center h-[60vh]"><LoadingSpinner /></div>
+      </div>
+    );
+  }
 
   return (
-    <div className="min-h-screen bg-gray-50">
-      <div className="flex gap-4">
-        {/* Sidebar */}
-        <Sidebar links={sidebarLinks} title="Dashboard" />
+    <div className="min-h-screen bg-white">
+      <Navbar />
 
-        {/* Main Content */}
-        <div className="flex-1 p-8">
-          <div className="max-w-4xl">
-            {/* Header */}
-            <div className="mb-8">
-              <h1 className="text-4xl font-bold text-[#001F3F] mb-2">Settings</h1>
-              <p className="text-[#4A4A4A]">Manage your account and preferences</p>
+      <div className="pt-20 px-4 sm:px-6 lg:px-8">
+        <div className="max-w-3xl mx-auto">
+          <Breadcrumbs items={breadcrumbs} className="mb-6" />
+
+          <div className="mb-6">
+            <h1 className="text-2xl sm:text-3xl lg:text-4xl font-bold text-[#001F3F] mb-2">Settings</h1>
+            <p className="text-[#4A4A4A]">Manage your account and preferences</p>
+          </div>
+
+          {/* Message Banner */}
+          {message && (
+            <div className={`mb-6 p-4 rounded-lg text-sm font-medium ${
+              message.type === 'success' ? 'bg-green-50 text-green-700 border border-green-200' : 'bg-red-50 text-red-700 border border-red-200'
+            }`}>
+              {message.text}
+            </div>
+          )}
+
+          <div className="space-y-8 pb-12">
+
+            {/* Account Settings */}
+            <div className="bg-white rounded-xl p-6 sm:p-8 border border-[#E5E7EB]">
+              <h2 className="text-xl font-bold text-[#001F3F] mb-6">Account Settings</h2>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-6 mb-6">
+                <div>
+                  <label className="block text-sm font-semibold text-[#001F3F] mb-2">Email Address</label>
+                  <Input type="email" value={profile.email} disabled placeholder="Email" />
+                  <p className="text-xs text-[#4A4A4A] mt-1">Email cannot be changed</p>
+                </div>
+                <div>
+                  <label className="block text-sm font-semibold text-[#001F3F] mb-2">Phone Number</label>
+                  <Input
+                    type="tel"
+                    value={profile.phone}
+                    onChange={(e) => setProfile(prev => ({ ...prev, phone: e.target.value }))}
+                    placeholder="Phone number"
+                  />
+                </div>
+              </div>
+              <Button size="sm" onClick={handleSaveProfile} disabled={savingProfile}>
+                {savingProfile ? 'Saving...' : 'Update Account'}
+              </Button>
             </div>
 
-            {/* Settings Sections */}
-            <form onSubmit={handleSubmit} className="space-y-8">
-              {/* Account Settings */}
-              <div className="bg-white rounded-lg p-8 border border-[#E5E7EB]">
-                <h2 className="text-2xl font-bold text-[#001F3F] mb-6">Account Settings</h2>
-                <div className="space-y-6">
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                    <div>
-                      <label className="block text-sm font-semibold text-[#001F3F] mb-2">Email Address</label>
-                      <Input
-                        placeholder="you@example.com"
-                        type="email"
-                        name="email"
-                        value={settings.email}
-                        onChange={handleChange}
-                      />
-                    </div>
-                    <div>
-                      <label className="block text-sm font-semibold text-[#001F3F] mb-2">Phone Number</label>
-                      <Input
-                        placeholder="+1 (555) 123-4567"
-                        type="tel"
-                        name="phone"
-                        value={settings.phone}
-                        onChange={handleChange}
-                      />
-                    </div>
-                  </div>
-
+            {/* Change Password */}
+            <div className="bg-white rounded-xl p-6 sm:p-8 border border-[#E5E7EB]">
+              <h2 className="text-xl font-bold text-[#001F3F] mb-6">Change Password</h2>
+              <div className="space-y-4 mb-6">
+                <div>
+                  <label className="block text-sm font-semibold text-[#001F3F] mb-2">Current Password</label>
+                  <Input
+                    type="password"
+                    placeholder="Enter current password"
+                    value={passwords.currentPassword}
+                    onChange={(e) => setPasswords(prev => ({ ...prev, currentPassword: e.target.value }))}
+                  />
+                </div>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <div>
-                    <h3 className="font-semibold text-[#001F3F] mb-4">Change Password</h3>
-                    <div className="space-y-4">
-                      <div>
-                        <label className="block text-sm font-semibold text-[#001F3F] mb-2">Current Password</label>
-                        <Input
-                          placeholder="••••••••"
-                          type="password"
-                          name="currentPassword"
-                          value={settings.currentPassword}
-                          onChange={handleChange}
-                        />
-                      </div>
-                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                        <div>
-                          <label className="block text-sm font-semibold text-[#001F3F] mb-2">New Password</label>
-                          <Input
-                            placeholder="••••••••"
-                            type="password"
-                            name="newPassword"
-                            value={settings.newPassword}
-                            onChange={handleChange}
-                          />
-                        </div>
-                        <div>
-                          <label className="block text-sm font-semibold text-[#001F3F] mb-2">Confirm Password</label>
-                          <Input
-                            placeholder="••••••••"
-                            type="password"
-                            name="confirmPassword"
-                            value={settings.confirmPassword}
-                            onChange={handleChange}
-                          />
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              </div>
-
-              {/* Notification Preferences */}
-              <div className="bg-white rounded-lg p-8 border border-[#E5E7EB]">
-                <h2 className="text-2xl font-bold text-[#001F3F] mb-6">Notification Preferences</h2>
-                <div className="space-y-4">
-                  <div className="flex items-center justify-between p-4 bg-gray-50 rounded-lg">
-                    <div>
-                      <h3 className="font-semibold text-[#001F3F]">Email Notifications</h3>
-                      <p className="text-sm text-[#4A4A4A]">Receive emails about applications and messages</p>
-                    </div>
-                    <input
-                      type="checkbox"
-                      name="emailNotifications"
-                      checked={settings.emailNotifications}
-                      onChange={handleChange}
-                      className="w-5 h-5 accent-[#FF7A00] rounded cursor-pointer"
+                    <label className="block text-sm font-semibold text-[#001F3F] mb-2">New Password</label>
+                    <Input
+                      type="password"
+                      placeholder="Enter new password"
+                      value={passwords.newPassword}
+                      onChange={(e) => setPasswords(prev => ({ ...prev, newPassword: e.target.value }))}
                     />
                   </div>
-
-                  <div className="flex items-center justify-between p-4 bg-gray-50 rounded-lg">
-                    <div>
-                      <h3 className="font-semibold text-[#001F3F]">Job Recommendations</h3>
-                      <p className="text-sm text-[#4A4A4A]">Get notified about jobs matching your skills</p>
-                    </div>
-                    <input
-                      type="checkbox"
-                      name="jobRecommendations"
-                      checked={settings.jobRecommendations}
-                      onChange={handleChange}
-                      className="w-5 h-5 accent-[#FF7A00] rounded cursor-pointer"
-                    />
-                  </div>
-
-                  <div className="flex items-center justify-between p-4 bg-gray-50 rounded-lg">
-                    <div>
-                      <h3 className="font-semibold text-[#001F3F]">Marketing Updates</h3>
-                      <p className="text-sm text-[#4A4A4A]">Receive news about new features and promotions</p>
-                    </div>
-                    <input
-                      type="checkbox"
-                      name="marketingUpdates"
-                      checked={settings.marketingUpdates}
-                      onChange={handleChange}
-                      className="w-5 h-5 accent-[#FF7A00] rounded cursor-pointer"
-                    />
-                  </div>
-
-                  <div className="flex items-center justify-between p-4 bg-gray-50 rounded-lg">
-                    <div>
-                      <h3 className="font-semibold text-[#001F3F]">SMS Notifications</h3>
-                      <p className="text-sm text-[#4A4A4A]">Receive text messages for urgent updates</p>
-                    </div>
-                    <input
-                      type="checkbox"
-                      name="smsNotifications"
-                      checked={settings.smsNotifications}
-                      onChange={handleChange}
-                      className="w-5 h-5 accent-[#FF7A00] rounded cursor-pointer"
+                  <div>
+                    <label className="block text-sm font-semibold text-[#001F3F] mb-2">Confirm Password</label>
+                    <Input
+                      type="password"
+                      placeholder="Confirm new password"
+                      value={passwords.confirmPassword}
+                      onChange={(e) => setPasswords(prev => ({ ...prev, confirmPassword: e.target.value }))}
                     />
                   </div>
                 </div>
               </div>
+              <Button size="sm" onClick={handleChangePassword} disabled={savingPassword}>
+                {savingPassword ? 'Changing...' : 'Change Password'}
+              </Button>
+            </div>
 
-              {/* Privacy Settings */}
-              <div className="bg-white rounded-lg p-8 border border-[#E5E7EB]">
-                <h2 className="text-2xl font-bold text-[#001F3F] mb-6">Privacy Settings</h2>
-                <div className="space-y-4">
-                  <div className="flex items-center justify-between p-4 bg-gray-50 rounded-lg">
+            {/* Notification Preferences */}
+            <div className="bg-white rounded-xl p-6 sm:p-8 border border-[#E5E7EB]">
+              <h2 className="text-xl font-bold text-[#001F3F] mb-6">Notification Preferences</h2>
+              <div className="space-y-3 mb-6">
+                {[
+                  { key: 'emailNotifications', title: 'Email Notifications', desc: 'Receive emails about applications and messages' },
+                  { key: 'messageAlerts', title: 'Message Alerts', desc: 'Get notified when you receive new messages' },
+                  { key: 'applicationUpdates', title: 'Application Updates', desc: 'Updates when your application status changes' },
+                  { key: 'jobRecommendations', title: 'Job Recommendations', desc: 'Get notified about jobs matching your skills' },
+                ].map(item => (
+                  <div key={item.key} className="flex items-center justify-between p-4 bg-gray-50 rounded-lg">
                     <div>
-                      <h3 className="font-semibold text-[#001F3F]">Profile Visibility</h3>
-                      <p className="text-sm text-[#4A4A4A]">Show profile to employers</p>
+                      <h3 className="font-semibold text-[#001F3F] text-sm sm:text-base">{item.title}</h3>
+                      <p className="text-xs sm:text-sm text-[#4A4A4A]">{item.desc}</p>
                     </div>
                     <input
                       type="checkbox"
-                      name="profileVisibility"
-                      checked={settings.profileVisibility}
-                      onChange={handleChange}
-                      className="w-5 h-5 accent-[#FF7A00] rounded cursor-pointer"
+                      checked={notifications[item.key as keyof typeof notifications]}
+                      onChange={() => handleNotifChange(item.key)}
+                      className="w-5 h-5 accent-[#FF7A00] rounded cursor-pointer flex-shrink-0 ml-4"
                     />
                   </div>
+                ))}
+              </div>
+              <Button size="sm" onClick={handleSaveNotifications} disabled={savingNotifications}>
+                {savingNotifications ? 'Saving...' : 'Save Preferences'}
+              </Button>
+            </div>
 
-                  <div className="flex items-center justify-between p-4 bg-gray-50 rounded-lg">
-                    <div>
-                      <h3 className="font-semibold text-[#001F3F]">Show Phone Number</h3>
-                      <p className="text-sm text-[#4A4A4A]">Allow employers to see your phone number</p>
-                    </div>
-                    <input
-                      type="checkbox"
-                      name="showPhoneNumber"
-                      checked={settings.showPhoneNumber}
-                      onChange={handleChange}
-                      className="w-5 h-5 accent-[#FF7A00] rounded cursor-pointer"
-                    />
+            {/* Danger Zone */}
+            <div className="bg-red-50 rounded-xl p-6 sm:p-8 border border-red-200">
+              <h2 className="text-xl font-bold text-red-600 mb-6">Danger Zone</h2>
+              <div className="space-y-3">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between p-4 bg-white rounded-lg border border-red-200 gap-3">
+                  <div>
+                    <h3 className="font-semibold text-[#001F3F]">Deactivate Account</h3>
+                    <p className="text-sm text-[#4A4A4A]">Temporarily deactivate your account</p>
                   </div>
+                  <button className="px-4 py-2 text-red-600 border border-red-300 rounded-lg hover:bg-red-50 transition font-medium text-sm whitespace-nowrap">
+                    Deactivate
+                  </button>
+                </div>
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between p-4 bg-white rounded-lg border border-red-200 gap-3">
+                  <div>
+                    <h3 className="font-semibold text-[#001F3F]">Delete Account</h3>
+                    <p className="text-sm text-[#4A4A4A]">Permanently delete your account and all data</p>
+                  </div>
+                  <button className="px-4 py-2 text-white bg-red-600 rounded-lg hover:bg-red-700 transition font-medium text-sm whitespace-nowrap">
+                    Delete
+                  </button>
                 </div>
               </div>
+            </div>
 
-              {/* Danger Zone */}
-              <div className="bg-red-50 rounded-lg p-8 border border-red-200">
-                <h2 className="text-2xl font-bold text-red-600 mb-6">Danger Zone</h2>
-                <div className="space-y-4">
-                  <div className="flex items-center justify-between p-4 bg-white rounded-lg border border-red-200">
-                    <div>
-                      <h3 className="font-semibold text-[#001F3F]">Deactivate Account</h3>
-                      <p className="text-sm text-[#4A4A4A]">Temporarily deactivate your account</p>
-                    </div>
-                    <button className="px-4 py-2 text-red-600 border border-red-300 rounded-lg hover:bg-red-50 transition font-medium">
-                      Deactivate
-                    </button>
-                  </div>
-
-                  <div className="flex items-center justify-between p-4 bg-white rounded-lg border border-red-200">
-                    <div>
-                      <h3 className="font-semibold text-[#001F3F]">Delete Account</h3>
-                      <p className="text-sm text-[#4A4A4A]">Permanently delete your account and all data</p>
-                    </div>
-                    <button className="px-4 py-2 text-white bg-red-600 rounded-lg hover:bg-red-700 transition font-medium">
-                      Delete
-                    </button>
-                  </div>
-                </div>
-              </div>
-
-              {/* Save Button */}
-              <div className="flex gap-4">
-                <Button
-                  type="submit"
-                  size="lg"
-                  disabled={isLoading}
-                  loading={isLoading}
-                >
-                  {isLoading ? 'Saving...' : 'Save Changes'}
-                </Button>
-                <button
-                  type="button"
-                  className="px-8 py-3 rounded-lg border-2 border-[#E5E7EB] text-[#4A4A4A] hover:bg-gray-50 transition font-medium"
-                >
-                  Cancel
-                </button>
-              </div>
-            </form>
           </div>
         </div>
       </div>
