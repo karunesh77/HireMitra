@@ -1,6 +1,7 @@
 'use client';
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, Suspense } from 'react';
+import { useSearchParams } from 'next/navigation';
 import { Navbar, Input, Select, JobCard, Breadcrumbs, LoadingSpinner, Button, Card } from '@/components';
 import apiClient from '@/lib/api';
 
@@ -19,7 +20,10 @@ interface Job {
 
 const DEBOUNCE_DELAY = 300;
 
-export default function WorkerBrowseJobs() {
+function WorkerBrowseJobsContent() {
+  const searchParams = useSearchParams();
+  const urlSearch = searchParams.get('search') || '';
+
   const breadcrumbs = [
     { label: 'Dashboard', href: '/dashboard/worker' },
     { label: 'Jobs' }
@@ -46,7 +50,7 @@ export default function WorkerBrowseJobs() {
     { value: 'temporary', label: 'Temporary' }
   ];
 
-  const [searchQuery, setSearchQuery] = useState('');
+  const [searchQuery, setSearchQuery] = useState(urlSearch);
   const [selectedCategory, setSelectedCategory] = useState('');
   const [selectedJobType, setSelectedJobType] = useState('');
   const [selectedLocation, setSelectedLocation] = useState('');
@@ -247,5 +251,13 @@ export default function WorkerBrowseJobs() {
         </div>
       </div>
     </div>
+  );
+}
+
+export default function WorkerBrowseJobs() {
+  return (
+    <Suspense fallback={<div className="min-h-screen bg-white flex items-center justify-center"><LoadingSpinner /></div>}>
+      <WorkerBrowseJobsContent />
+    </Suspense>
   );
 }

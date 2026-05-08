@@ -1,7 +1,7 @@
 'use client';
 
-import { useState, useEffect } from 'react';
-import { useRouter } from 'next/navigation';
+import { useState, useEffect, Suspense } from 'react';
+import { useRouter, useSearchParams } from 'next/navigation';
 import Navbar from '@/components/Navbar';
 import { Button, LoadingSpinner, Card } from '@/components';
 import apiClient from '@/lib/api';
@@ -24,14 +24,16 @@ interface Job {
   status: string;
 }
 
-export default function JobsPage() {
+function JobsPageContent() {
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const urlSearch = searchParams.get('search') || '';
   const { isAuthenticated, userType } = useAuth();
 
   const [jobs, setJobs] = useState<Job[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [searchQuery, setSearchQuery] = useState('');
+  const [searchQuery, setSearchQuery] = useState(urlSearch);
   const [selectedCategory, setSelectedCategory] = useState('');
   const [selectedJobType, setSelectedJobType] = useState('');
   const [page, setPage] = useState(1);
@@ -271,5 +273,13 @@ export default function JobsPage() {
         </div>
       </div>
     </div>
+  );
+}
+
+export default function JobsPage() {
+  return (
+    <Suspense fallback={<div className="min-h-screen bg-white flex items-center justify-center"><LoadingSpinner /></div>}>
+      <JobsPageContent />
+    </Suspense>
   );
 }

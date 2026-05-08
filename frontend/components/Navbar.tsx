@@ -33,7 +33,14 @@ export default function Navbar() {
   const handleSearch = (e: React.FormEvent) => {
     e.preventDefault();
     if (searchQuery.trim()) {
-      console.log('Searching for:', searchQuery);
+      const basePath = isAuthenticated && userType === 'employer'
+        ? '/dashboard/employer/workers'
+        : isAuthenticated && userType === 'worker'
+        ? '/dashboard/worker/jobs'
+        : '/jobs';
+      router.push(`${basePath}?search=${encodeURIComponent(searchQuery.trim())}`);
+      setSearchQuery('');
+      setShowMobileMenu(false);
     }
   };
 

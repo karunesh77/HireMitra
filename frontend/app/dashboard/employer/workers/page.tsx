@@ -1,6 +1,7 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, Suspense } from 'react';
+import { useSearchParams } from 'next/navigation';
 import { Navbar, Input, Select, Button, LoadingSpinner } from '@/components';
 import { Breadcrumbs } from '@/components';
 import Link from 'next/link';
@@ -20,7 +21,10 @@ interface Worker {
   availability?: string;
 }
 
-export default function EmployerBrowseWorkers() {
+function EmployerBrowseWorkersContent() {
+  const searchParams = useSearchParams();
+  const urlSearch = searchParams.get('search') || '';
+
   const breadcrumbs = [
     { label: 'Dashboard', href: '/dashboard/employer' },
     { label: 'Browse Workers' }
@@ -29,7 +33,7 @@ export default function EmployerBrowseWorkers() {
   const [workers, setWorkers] = useState<Worker[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [search, setSearch] = useState('');
+  const [search, setSearch] = useState(urlSearch);
   const [skillFilter, setSkillFilter] = useState('');
   const [locationFilter, setLocationFilter] = useState('');
 
@@ -66,7 +70,7 @@ export default function EmployerBrowseWorkers() {
 
   useEffect(() => {
     fetchWorkers();
-  }, [skillFilter]);
+  }, [skillFilter, urlSearch]);
 
   const handleSearch = (e: React.FormEvent) => {
     e.preventDefault();
@@ -208,5 +212,13 @@ export default function EmployerBrowseWorkers() {
         </div>
       </div>
     </div>
+  );
+}
+
+export default function EmployerBrowseWorkers() {
+  return (
+    <Suspense fallback={<div className="min-h-screen bg-white flex items-center justify-center"><LoadingSpinner /></div>}>
+      <EmployerBrowseWorkersContent />
+    </Suspense>
   );
 }
