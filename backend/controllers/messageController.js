@@ -83,6 +83,7 @@ exports.sendMessage = async (req, res) => {
 
     // Create notification for receiver
     const sender = await User.findById(req.user.id).select('name');
+    const receiver = await User.findById(receiverId).select('userType');
     await createNotification({
       userId: receiverId,
       type: 'message',
@@ -90,11 +91,7 @@ exports.sendMessage = async (req, res) => {
       body: `${sender?.name || 'Someone'} sent you a message: "${content.substring(0, 60)}${content.length > 60 ? '...' : ''}"`,
       fromUserId: req.user.id,
       fromUserName: sender?.name,
-      link: `/dashboard/${
-        conversation.participantIds
-          ? '/messages'
-          : '/messages'
-      }`
+      link: `/dashboard/${receiver?.userType === 'employer' ? 'employer' : 'worker'}/messages`
     });
 
     res.status(201).json({

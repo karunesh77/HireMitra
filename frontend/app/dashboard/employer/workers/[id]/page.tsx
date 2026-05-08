@@ -32,6 +32,25 @@ export default function WorkerDetails({ params }: { params: Promise<{ id: string
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [isStartingChat, setIsStartingChat] = useState(false);
+  const [isSaved, setIsSaved] = useState(false);
+
+  // Check if worker is saved
+  useEffect(() => {
+    const savedIds: string[] = JSON.parse(localStorage.getItem('savedWorkers') || '[]');
+    setIsSaved(savedIds.includes(id));
+  }, [id]);
+
+  const handleSaveWorker = () => {
+    let savedIds: string[] = JSON.parse(localStorage.getItem('savedWorkers') || '[]');
+    if (savedIds.includes(id)) {
+      savedIds = savedIds.filter(wId => wId !== id);
+      setIsSaved(false);
+    } else {
+      savedIds.push(id);
+      setIsSaved(true);
+    }
+    localStorage.setItem('savedWorkers', JSON.stringify(savedIds));
+  };
 
   const breadcrumbs = [
     { label: 'Dashboard', href: '/dashboard/employer' },
@@ -212,6 +231,13 @@ export default function WorkerDetails({ params }: { params: Promise<{ id: string
                 <div className="space-y-3">
                   <Button fullWidth onClick={handleSendMessage} disabled={isStartingChat}>
                     {isStartingChat ? 'Opening chat...' : '💬 Send Message'}
+                  </Button>
+                  <Button
+                    fullWidth
+                    variant={isSaved ? 'primary' : 'secondary'}
+                    onClick={handleSaveWorker}
+                  >
+                    {isSaved ? '❤️ Saved' : '🤍 Save Worker'}
                   </Button>
                 </div>
                 {worker.hourlyRate && (

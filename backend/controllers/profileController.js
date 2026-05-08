@@ -141,7 +141,7 @@ exports.getWorkerById = async (req, res) => {
         body: `${viewer?.name || 'An employer'} viewed your profile`,
         fromUserId: req.user.id,
         fromUserName: viewer?.name,
-        link: '/dashboard/worker/notifications'
+        link: '/dashboard/worker/profile'
       });
     }
 
