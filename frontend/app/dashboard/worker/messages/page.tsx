@@ -184,14 +184,14 @@ export default function WorkerMessages() {
 
       <div className="pt-20 px-4 sm:px-6 lg:px-8">
         <div className="max-w-6xl mx-auto">
-          <Breadcrumbs items={breadcrumbs} className="mb-6" />
+          <Breadcrumbs items={breadcrumbs} className="mb-3" />
 
-          <div className="mb-6">
-            <h1 className="text-2xl sm:text-3xl lg:text-4xl font-bold text-[#001F3F] mb-2">Messages</h1>
-            <p className="text-[#4A4A4A]">Chat with employers</p>
+          <div className="mb-3">
+            <h1 className="text-2xl sm:text-3xl font-bold text-[#001F3F] mb-1">Messages</h1>
+            <p className="text-sm text-[#6B7280]">Chat with employers</p>
           </div>
 
-          <div className="grid grid-cols-1 lg:grid-cols-3 gap-0 h-[calc(100vh-12rem)] min-h-[500px] border border-[#E5E7EB] rounded-xl overflow-hidden">
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-0 h-[calc(100vh-14rem)] min-h-[400px] border border-[#E5E7EB] rounded-xl overflow-hidden">
 
             {/* Conversations List */}
             <div className={`lg:col-span-1 border-r border-[#E5E7EB] bg-white flex flex-col ${selectedConv ? 'hidden lg:flex' : 'flex'}`}>
