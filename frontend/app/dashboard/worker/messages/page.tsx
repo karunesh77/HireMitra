@@ -179,22 +179,22 @@ export default function WorkerMessages() {
   };
 
   return (
-    <div className="min-h-screen bg-white">
+    <div className="h-screen flex flex-col bg-white">
       <Navbar />
 
-      <div className="pt-20 px-4 sm:px-6 lg:px-8">
-        <div className="max-w-6xl mx-auto">
-          <Breadcrumbs items={breadcrumbs} className="mb-3" />
+      <div className="flex flex-col flex-1 min-h-0 pt-20 px-4 sm:px-6 lg:px-8 pb-4">
+        <div className="max-w-6xl mx-auto w-full flex flex-col flex-1 min-h-0">
+          <Breadcrumbs items={breadcrumbs} className="mb-2 flex-shrink-0" />
 
-          <div className="mb-3">
-            <h1 className="text-2xl sm:text-3xl font-bold text-[#001F3F] mb-1">Messages</h1>
+          <div className="mb-2 flex-shrink-0">
+            <h1 className="text-xl sm:text-2xl font-bold text-[#001F3F] mb-0.5">Messages</h1>
             <p className="text-sm text-[#6B7280]">Chat with employers</p>
           </div>
 
-          <div className="grid grid-cols-1 lg:grid-cols-3 gap-0 h-[calc(100vh-14rem)] min-h-[400px] border border-[#E5E7EB] rounded-xl overflow-hidden">
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-0 flex-1 min-h-0 border border-[#E5E7EB] rounded-xl overflow-hidden">
 
             {/* Conversations List */}
-            <div className={`lg:col-span-1 border-r border-[#E5E7EB] bg-white flex flex-col ${selectedConv ? 'hidden lg:flex' : 'flex'}`}>
+            <div className={`lg:col-span-1 border-r border-[#E5E7EB] bg-white flex flex-col min-h-0 ${selectedConv ? 'hidden lg:flex' : 'flex'}`}>
               <div className="p-4 border-b border-[#E5E7EB]">
                 <Input placeholder="Search conversations..." type="text" />
               </div>
@@ -266,7 +266,7 @@ export default function WorkerMessages() {
             </div>
 
             {/* Chat Area */}
-            <div className={`lg:col-span-2 bg-white flex flex-col ${selectedConv ? 'flex' : 'hidden lg:flex'}`}>
+            <div className={`lg:col-span-2 bg-white flex flex-col min-h-0 ${selectedConv ? 'flex' : 'hidden lg:flex'}`}>
               {!selectedConv ? (
                 <div className="flex-1 flex items-center justify-center text-center text-[#4A4A4A]">
                   <div>

@@ -76,7 +76,7 @@ export default function Navbar() {
   return (
     <nav className="fixed top-0 w-full bg-[#001F3F]/95 backdrop-blur-md border-b border-white/10 z-50">
       <div className="max-w-7xl mx-auto px-3 sm:px-4 md:px-6 lg:px-8">
-        <div className="flex justify-between items-center h-16 gap-4">
+        <div className="flex items-center h-16 gap-2 sm:gap-4">
           {/* Logo */}
           <Link href="/" className="flex items-center gap-2.5 group flex-shrink-0">
             <div className="w-8 h-8 bg-gradient-to-br from-[#FF7A00] to-[#FF9A40] rounded-lg flex items-center justify-center font-bold text-white text-sm shadow-md shadow-[#FF7A00]/20">
@@ -115,21 +115,8 @@ export default function Navbar() {
             ))}
           </div>
 
-          {/* Hamburger */}
-          <button
-            className="lg:hidden p-2 text-white/80 hover:text-white hover:bg-white/10 rounded-lg transition-all flex-shrink-0 ml-auto"
-            onClick={() => setShowMobileMenu(!showMobileMenu)}
-            aria-label="Toggle menu"
-          >
-            {showMobileMenu ? (
-              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" /></svg>
-            ) : (
-              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" /></svg>
-            )}
-          </button>
-
           {/* Auth Section */}
-          <div className="flex items-center gap-2 flex-shrink-0 relative" ref={menuRef}>
+          <div className="flex items-center gap-1 flex-shrink-0 relative ml-auto" ref={menuRef}>
             {isLoading ? (
               <div className="w-8 h-8 rounded-full bg-white/10 animate-pulse"></div>
             ) : isAuthenticated && user ? (
@@ -151,8 +138,8 @@ export default function Navbar() {
                   onClick={() => setShowUserMenu(!showUserMenu)}
                   className="flex items-center gap-2 px-2.5 py-1.5 rounded-xl text-white hover:bg-white/10 transition-all"
                 >
-                  <div className="w-7 h-7 rounded-full bg-gradient-to-br from-[#FF7A00] to-[#FF9A40] flex items-center justify-center text-xs font-bold text-white shadow-sm">
-                    {user.firstName?.charAt(0).toUpperCase()}
+                  <div className="w-8 h-8 rounded-full bg-gradient-to-br from-[#FF7A00] to-[#FF9A40] flex items-center justify-center text-sm font-bold text-white shadow-sm">
+                    {(user.firstName || user.email || '?').charAt(0).toUpperCase()}
                   </div>
                   <span className="hidden sm:inline text-sm font-medium">{user.firstName}</span>
                   <svg className={`w-3.5 h-3.5 transition-transform ${showUserMenu ? 'rotate-180' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -201,11 +188,41 @@ export default function Navbar() {
               </div>
             )}
           </div>
+
+          {/* Hamburger - rightmost on mobile */}
+          <button
+            className="lg:hidden p-2 text-white/80 hover:text-white hover:bg-white/10 rounded-lg transition-all flex-shrink-0"
+            onClick={() => setShowMobileMenu(!showMobileMenu)}
+            aria-label="Toggle menu"
+          >
+            {showMobileMenu ? (
+              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" /></svg>
+            ) : (
+              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" /></svg>
+            )}
+          </button>
         </div>
 
         {/* Mobile Nav */}
         {showMobileMenu && (
           <div className="lg:hidden border-t border-white/10 py-3 space-y-1 animate-slide-up">
+            {/* Mobile Search */}
+            <form onSubmit={handleSearch} className="sm:hidden px-3 pb-2">
+              <div className="relative w-full">
+                <input
+                  type="text"
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  placeholder="Search jobs, skills..."
+                  className="w-full px-3 py-2 rounded-xl bg-white/10 border border-white/10 text-white placeholder-white/40 focus:outline-none focus:ring-2 focus:ring-[#FF7A00]/50 text-sm"
+                />
+                <button type="submit" className="absolute right-3 top-1/2 -translate-y-1/2 text-white/40 hover:text-[#FF7A00] transition-colors">
+                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                  </svg>
+                </button>
+              </div>
+            </form>
             {navLinks.map((link) => (
               <Link key={link.label} href={link.href} onClick={() => setShowMobileMenu(false)}
                 className="block px-4 py-2.5 text-white/80 hover:text-white hover:bg-white/10 rounded-lg transition-all font-medium">
@@ -230,23 +247,7 @@ export default function Navbar() {
           </div>
         )}
 
-        {/* Mobile Search */}
-        <form onSubmit={handleSearch} className="sm:hidden pb-3">
-          <div className="relative w-full">
-            <input
-              type="text"
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              placeholder="Search..."
-              className="w-full px-3 py-2 rounded-xl bg-white/10 border border-white/10 text-white placeholder-white/40 focus:outline-none focus:ring-2 focus:ring-[#FF7A00]/50 text-sm"
-            />
-            <button type="submit" className="absolute right-3 top-1/2 -translate-y-1/2 text-white/40 hover:text-[#FF7A00] transition-colors">
-              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
-              </svg>
-            </button>
-          </div>
-        </form>
+        {/* Mobile Search - only in mobile menu */}
       </div>
     </nav>
   );
