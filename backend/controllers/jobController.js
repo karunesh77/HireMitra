@@ -80,7 +80,8 @@ exports.getJobs = async (req, res) => {
       .populate('employerId', 'name companyName rating')
       .sort({ postedDate: -1 })
       .skip(skip)
-      .limit(parseInt(limit));
+      .limit(parseInt(limit))
+      .lean();
 
     const total = await Job.countDocuments(filter);
 
@@ -207,7 +208,13 @@ exports.deleteJob = async (req, res) => {
 // @access  Private (Employer only)
 exports.getMyJobs = async (req, res) => {
   try {
-    const jobs = await Job.find({ employerId: req.user.id }).sort({ postedDate: -1 });
+    const { page = 1, limit = 20 } = req.query;
+    const skip = (page - 1) * limit;
+    const jobs = await Job.find({ employerId: req.user.id })
+      .sort({ postedDate: -1 })
+      .skip(skip)
+      .limit(parseInt(limit))
+      .lean();
 
     res.status(200).json({
       success: true,
@@ -234,7 +241,10 @@ exports.searchJobs = async (req, res) => {
     const jobs = await Job.find({
       $text: { $search: query },
       status: 'active'
-    }).populate('employerId', 'name companyName rating');
+    })
+      .populate('employerId', 'name companyName rating')
+      .limit(20)
+      .lean();
 
     res.status(200).json({
       success: true,

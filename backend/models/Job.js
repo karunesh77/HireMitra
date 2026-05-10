@@ -102,5 +102,9 @@ const jobSchema = new mongoose.Schema({
 
 // Index for search optimization
 jobSchema.index({ title: 'text', description: 'text', category: 1, location: 1 });
+// Index for employer's jobs (getMyJobs, employer dashboard)
+jobSchema.index({ employerId: 1, status: 1, postedDate: -1 });
+// Index for public job browsing (most common query)
+jobSchema.index({ status: 1, category: 1, postedDate: -1 });
 
 module.exports = mongoose.model('Job', jobSchema);

@@ -2,7 +2,7 @@
 
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useMemo, useCallback } from 'react';
 import { useAuth } from '@/hooks/useAuth';
 import apiClient from '@/lib/api';
 
@@ -24,18 +24,21 @@ export default function Navbar() {
     return () => document.removeEventListener('mousedown', handler);
   }, []);
 
-  // Poll for unread notifications
+  // Poll for unread notifications (visibility-aware)
   useEffect(() => {
     if (!isAuthenticated) return;
     const fetchUnread = async () => {
+      if (document.hidden) return; // Skip if tab not visible
       try {
         const res = await apiClient.get('/api/notifications?limit=1');
         setUnreadCount(res.data.unreadCount || 0);
       } catch {}
     };
     fetchUnread();
-    const interval = setInterval(fetchUnread, 5000);
-    return () => clearInterval(interval);
+    const interval = setInterval(fetchUnread, 30000); // 30s instead of 5s
+    const handleVisibility = () => { if (!document.hidden) fetchUnread(); };
+    document.addEventListener('visibilitychange', handleVisibility);
+    return () => { clearInterval(interval); document.removeEventListener('visibilitychange', handleVisibility); };
   }, [isAuthenticated]);
 
   const handleSearch = (e: React.FormEvent) => {
@@ -52,26 +55,31 @@ export default function Navbar() {
     }
   };
 
-  const handleLogout = () => {
+  const handleLogout = useCallback(() => {
     logout();
     setShowUserMenu(false);
     router.push('/');
-  };
+  }, [logout, router]);
 
-  const getDashboardLink = () => {
+  const dashboardLink = useMemo(() => {
     if (!isAuthenticated || !userType) return '/dashboard/worker';
     return userType === 'employer' ? '/dashboard/employer' : '/dashboard/worker';
-  };
+  }, [isAuthenticated, userType]);
 
-  const getNotifLink = () =>
-    userType === 'employer' ? '/dashboard/employer/notifications' : '/dashboard/worker/notifications';
+  const getDashboardLink = useCallback(() => dashboardLink, [dashboardLink]);
 
-  const navLinks = [
+  const notifLink = useMemo(() =>
+    userType === 'employer' ? '/dashboard/employer/notifications' : '/dashboard/worker/notifications',
+  [userType]);
+
+  const getNotifLink = useCallback(() => notifLink, [notifLink]);
+
+  const navLinks = useMemo(() => [
     { label: 'Jobs', href: isAuthenticated && userType === 'worker' ? '/dashboard/worker/jobs' : isAuthenticated && userType === 'employer' ? '/dashboard/employer' : '/jobs' },
     { label: 'Workers', href: isAuthenticated && userType === 'employer' ? '/dashboard/employer/workers' : isAuthenticated && userType === 'worker' ? '/dashboard/worker' : '/workers' },
     { label: 'About', href: '/about' },
     { label: 'Contact', href: '/contact' },
-  ];
+  ], [isAuthenticated, userType]);
 
   return (
     <nav className="fixed top-0 w-full bg-[#001F3F]/95 backdrop-blur-md border-b border-white/10 z-50">

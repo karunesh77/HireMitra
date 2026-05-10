@@ -78,5 +78,9 @@ const applicationSchema = new mongoose.Schema({
 
 // Prevent duplicate applications
 applicationSchema.index({ workerId: 1, jobId: 1 }, { unique: true });
+// Index for employer viewing applications (most common employer query)
+applicationSchema.index({ employerId: 1, status: 1, appliedAt: -1 });
+// Index for worker tracking their applications
+applicationSchema.index({ workerId: 1, status: 1, appliedAt: -1 });
 
 module.exports = mongoose.model('Application', applicationSchema);

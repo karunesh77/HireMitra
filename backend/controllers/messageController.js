@@ -84,9 +84,11 @@ exports.sendMessage = async (req, res) => {
 
     await conversation.save();
 
-    // Create notification for receiver
-    const sender = await User.findById(req.user.id).select('name');
-    const receiver = await User.findById(receiverId).select('userType');
+    // Create notification for receiver (combined query to avoid N+1)
+    const [sender, receiver] = await Promise.all([
+      User.findById(req.user.id).select('name').lean(),
+      User.findById(receiverId).select('userType').lean()
+    ]);
     await createNotification({
       userId: receiverId,
       type: 'message',
@@ -180,19 +182,21 @@ exports.getMessages = async (req, res) => {
 
     const skip = (page - 1) * limit;
 
-    const messages = await Message.find({ conversationId })
-      .populate('senderId', 'name email profileImage')
-      .sort({ createdAt: -1 })
-      .skip(skip)
-      .limit(parseInt(limit));
+    const [messages, total] = await Promise.all([
+      Message.find({ conversationId })
+        .populate('senderId', 'name email profileImage')
+        .sort({ createdAt: -1 })
+        .skip(skip)
+        .limit(parseInt(limit))
+        .lean(),
+      Message.countDocuments({ conversationId })
+    ]);
 
-    const total = await Message.countDocuments({ conversationId });
-
-    // Mark messages as read
-    await Message.updateMany(
+    // Mark messages as read (fire and forget)
+    Message.updateMany(
       { conversationId, receiverId: req.user.id, isRead: false },
       { isRead: true, readAt: Date.now() }
-    );
+    ).exec();
 
     res.status(200).json({
       success: true,

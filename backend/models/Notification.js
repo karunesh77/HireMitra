@@ -40,4 +40,9 @@ const notificationSchema = new mongoose.Schema({
   }
 });
 
+// Compound index for unread count query (fires every 30s from Navbar)
+notificationSchema.index({ userId: 1, read: 1, createdAt: -1 });
+// TTL index: auto-delete notifications older than 90 days
+notificationSchema.index({ createdAt: 1 }, { expireAfterSeconds: 60 * 60 * 24 * 90 });
+
 module.exports = mongoose.model('Notification', notificationSchema);
